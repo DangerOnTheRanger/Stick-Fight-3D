@@ -1,0 +1,8 @@
+==============================
+Stick Fight 3D Coding Standard
+==============================
+
+* 4 spaces are used for indentation. *Never* use tabs.
+* CamelCase is used for class names
+* mixedCase is used for function, module, and package names
+* CAPITAL_LETTERS_WITH_UNDERSCORES are used for constants
