@@ -1,0 +1,102 @@
+Suggestion for how to structure the code, suggestions are welcome. one file per class.
+pseudocode...
+all classes should be able to remove what they added to the screen. so add a function for each thet does that.
+
+class Match():
+    def __init__(roundTime=60, Character1, Character2 ):
+        ###character 1 and 2 are strings pointing to the assets with the character. will be delivered by the character-selection screen.
+        ### till we have the selection screen, hardcode or default them.
+        
+        arena = #... load the arena here, be sure to set propper bitmasks on the floor and ring-out geometry
+        
+        player1 = Fighter(Character1, roundEnd )
+        player2 = Fighter(Character2, roundEnd )
+        
+        player1.setOpponent(player2)
+        player2.setOpponent(player1)
+        ##this is basically redirecting the input keys to the players, want to keep it out of the Fighter class so network can be hooked in later.
+        ##the redirecting could easily put in a class later on.
+        base.accpet("somekey", player1.someinput)
+        ...
+
+        
+        ##there is not much to be done here, maybe adding pause screen and the like later on.
+        
+    def roundEnd()
+        #double ko would require a variable like roundOver.
+        #short delay to allow double ko. 
+        if player1.getHealth():
+            #player 1 wins
+        elif player2.getHealth():
+            #player2 wins
+        else:
+            #double knockout.
+        
+        #update the round-wins gui. display guistuff, play win animation on chars, do whatever you like..
+        #reset the char healt,reset the positions and fsm states, then let the fun go on.
+        #eventually clear the round-end variable.
+        #if one player has 3 wins. end match
+ 
+    def endMatch():
+        #preferably show splashscreen till the menu has loaded
+        #remove players and the arena.
+
+
+class Fighter():
+    def __init__(characterPath , callOnDeath ):
+        self.wins = 0 #counting won rounds, a doubleko/draw counts as win for both.
+        self.healtBar = HealtBar(leftright, playername ) #name should be optional for now. but will be needed later on.
+        self.callOnDeath = callOnDeath
+        self.statusBitMask = 0<<16 #16 states should be plenty we can always add more. .. yeah why would ANYONE want to adress 65k memory!?
+                                   #shifting is meaningless btw. but just so we have an orientation about the mask size
+        self.defenseBitMask = 0    #active defense parts get a 1
+        self.attackBitMask = 0     #propably wont need this, as attackBitMasks are propably set on the fly by the fsm.
+        
+        #loading the model, all animation
+        #the fsm (have no real plan about that one so far), 
+        #setting up one function per input for the fsm (wich is then set up in the Match, or later the class handling butten and network input)
+        #set up collisions with the bitmasks set when loading the arena in the "Match" class
+        #add playertask.
+        
+    def setOpponent(opponent):
+        self.opponent = opponent
+   
+    def attack(attackBitMask,range,damageHit,damageDodge=0): #those variables will be supplied by the fsm states later on. 
+                                                             #function is pretty redundant... for structure only, and for early days
+        self.opponent.getAttacket(attackBitMask,range,damageHit,damageDodge)
+        
+    def getAttacked(attackBitMask,range,damageHit,damageDodge=0): #the equivalent
+        if range < self.modelnode.getDistance(self.opponent.modelnode):
+            #attack misses due to out of range.
+            return 0 
+
+        if self.statusBitMask & attackBitMask == 0: # attak misses cause the player avoided it. went low or so.
+            return 0
+            
+        if self.defenseBitMask & attackBitMask:
+            #set health down by damageDodge if any.
+            #set fsm so it goes into the right anim and so on
+            return 1 #hit,... but blocked so no combos 
+            
+        else:
+            #draw health
+            #set fsm state.
+            return 2 #in ya face .... smash.
+    
+    def __playertask__(task):
+        #player motion should go here i guess, if the fsm provide any smarter way to do that disregard this definition.
+        #checking for players health. couldbe done in getAttacked but that would propably break the last animation on the attacker side.
+        if self.health <= 0:
+            self.callOnDeath()
+
+class HealthBar():
+    def __init__(leftright,name="testdefault"):
+        #leftright defines if the health bar is for the left or the right player.
+    
+    def setHealth(): 
+        #sets the new health-level to display
+    
+    def setKOs():
+        #name is not so good, just add something to show how many round wins the player had.
+
+##what else do we need.. oooh.. i have lots on my list. but that shoud be just enough to get some reusable code working for some first test-plays.
