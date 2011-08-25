@@ -1,0 +1,29 @@
+goal: creating a fighting game like tekken, streetfighter , soul calibour ... 
+
+for artists:
+    -all models, textures, maps, sounds etc should go in assets for now. once we come up with a code base it will be possible to create self-contained content packs.
+    -feel free to create all sorts of stuff. for animations, please export them as separate files and add a readme with the attack-targets (like head,legs etc), delay in seconds between start of the animation and the actual "hit", and any other information you think could be useful. 
+    -for arena modellers, please add an invisible ground plane named "ground", wich defines the area where players can walk on. geometry named "out" will indicate that the player can fall out of the arena (ring out).
+    
+    
+for coders:
+    -there is no code yet. some ideas for implementing the fight system:
+        using a bitmask for attacks and player poition and defense state (each position of the bitmask used has to be documented)
+        example:  bit 0 represents the players feet, bit 1 the torso, bit 2 the head.
+                  if a player stands, all 3 bits are set, if he ducks. only bit 0 is set.
+                  if one player attacks straigt , the attack bit masks bit1 is set, for a attack on the legs, bit0, for the head bit1.
+                  
+                  there are 3 tests to run for each attack.
+                   1. is the opponent in range of attack (distance() easy enough. or a relative getx or so)
+                   2. does the attackers punch connect? (logic AND the attack and player position bitmasks) 
+                   3. is the attack getting blocked? (logic and with attack and defense state)
+                   
+                  suggested bits are
+                  (some horizontal attacks)
+                  0 : lower (legs)
+                  1 : middle (torso)
+                  2 : high (head)
+                  3 : vertikal strike (from above, not very interesting for the player position as it would be always 1, but for attack and defense 
+        
+        will draft a rough layout of classes and file structure soon.
+    -
