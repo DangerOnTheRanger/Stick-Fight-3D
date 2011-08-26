@@ -8,15 +8,17 @@ PLAYER_1_SIDE, PLAYER_2_SIDE = range(2)
 
 class PlayerHud(object):
 
-    def __init__(self, playerSide, maxHealth, name):
+    def __init__(self, playerSide, name):
 
         self.side = playerSide
-        self.maxHealth = maxHealth
         self.name = name
 
         self._createHealthBar()
         self._createNameTag()
         self._createRoundIndicator()
+
+    def setHealth(self, percentage):
+        self.healthBar['value'] = percentage
 
     def _createHealthBar(self):
 
@@ -28,8 +30,7 @@ class PlayerHud(object):
 
         self.healthBar = DirectWaitBar(scale = HEALTHBAR_SCALE,
                                        pos = healthBarPos,
-                                       range = self.maxHealth,
-                                       value = self.maxHealth)
+                                       value = 100)
         self.healthBar.reparentTo(render2d)
 
     def _createRoundIndicator(self):
@@ -55,8 +56,9 @@ class PlayerHud(object):
 def test():
 
     import direct.directbase.DirectStart
-    player1Hud = PlayerHud(PLAYER_1_SIDE, 1000, 'Player 1')
-    player2Hud = PlayerHud(PLAYER_2_SIDE, 1000, 'Player 2')
+    player1Hud = PlayerHud(PLAYER_1_SIDE, 'Player 1')
+    player1Hud.setHealth(80)
+    player2Hud = PlayerHud(PLAYER_2_SIDE, 'Player 2')
     run()
 
 
