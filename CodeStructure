@@ -44,6 +44,7 @@ class Match():
 
 class Fighter():
     def __init__(characterPath , callOnDeath ):
+        self.speed = (0,0)
         self.wins = 0 #counting won rounds, a doubleko/draw counts as win for both.
         self.healtBar = HealtBar(leftright, playername ) #name should be optional for now. but will be needed later on.
         self.callOnDeath = callOnDeath
@@ -83,12 +84,85 @@ class Fighter():
             #set fsm state.
             return 2 #in ya face .... smash.
     
+    def setSpeed(x,y):
+        self.speed = (x,y)
+    
     def __playertask__(task):
         #player motion should go here i guess, if the fsm provide any smarter way to do that disregard this definition.
         #checking for players health. couldbe done in getAttacked but that would propably break the last animation on the attacker side.
         if self.health <= 0:
             self.callOnDeath()
+        
+        #setx, sety 
+        
+class InputHandler():
+    #greps your input events, either from keyboard, network or from a cpu driven player
+    def __init__() #blabla
+        self.statearray = None
+        self.inputarray = None
+        
+    def mapInput(fsm=None,inputKeyArray=None,FSMStateArray=None ):
+        if !(fsm AND inputKeyArray AND FSMStateArray):
+            self.statearray= None
+            self.inputarray = None
+        
+        self.statearray= FSMStateArray 
+        self.inputarray = inputKeyArray
+        #depending on the input keys,request the fsm state.
+        #this is a bit of a detour for the inputs, but good for separation with network and cpu controlls, aswell as combos, keeps the fsm clean
+        
+        
+    def __keyComboTaskOMGWtfbbqifyounamethisfunctionlikethatiwillslapyoupersonally:
+        #one a button or combo was pressed...
+        if combodetect:
+            fsm.request(self.statearray[self.inputarray.index('thekey')])
+        #....
+        
+class FighterFSM(FSM):  #inherits from direct.fsm.FSM
+                    ##this class has to be written for each character in the game 
+                    ####unfortunately that much coding per char is required until we can autogenerate based on artists input
+                    ## i am not sure where to put the fighter actor. logically it belongs to the fighter class, but the fsm does a lot more with it.
+                    ## guess it will end up in the fsm as this is the file created for each fighter individually.
+                    ## or if we should inherit Fighter from FSM and simply stuff everything in there wich would be bad cause we copy all shared code around
+    def __init__(inputHandler,FighterClassInstance):
+        self.fighter = FighterClassInstance.ActorNodePath #so we can directly play and loop the animation there.
+        self.fighterinstance = FighterClassInstance
+        self.inputHandler = inputHandler #instance of the InputHandler class that 
+        self.activeInterval = None #we will store our active sequence,parallel or interval here, so we can easily clean it up 
+                                   #(altho we could go with naming them all the same,too. wich would be even more elegant)
+        self.transitionTimer = None #usually holds a sequence like sequence(Wait(time),self.request('nextstate'))
 
+    def enterIdle():
+        self.fighterinstance.setSpeed(0,0)
+        self.fighter.loop("idle")
+        self.inputHandler.mapInput(self,["a","b"],["punch","kick"])
+
+    def exitIdle():
+        self.fighterinstance.setSpeed(0,0) #cant hurt
+        self.inputHandler.mapInput()
+    
+    #example of a punch, wich default returns to idle, if no buttons are pressed. also blocks button presses/requests until sort befor the end. 
+    #at the end it is possible to transition to any legal state we defined earlier 
+    def enterPunch():
+        self.fighterinstance.setSpeed(0,0) #just for illustration
+        self.fighter.play('punchanim')
+        self.transitionTimer= Sequence(Wait(), self.request("Idle") )
+        self.transitionTimer.start()
+        self.inputHandler.mapInput(self,["b"],["kick"]) #allows us to combo a punch followed by a kick.
+
+    def filterPunch(self,request,args):
+        if self.transitionTimer.getT < self.tranistionTimer.getDuration-SomeTime : #where SomeTime is a shitty variable name, it is 5 am. 
+                                                                                   #but it is the time to grant players the chance to do combos
+            #requesting another punch.. well.. may require to call exitPunch and enterPunch, or you have to go via idle. havent tested, needs testing.
+            self.request(request)                                                                           
+    
+    def exitPunch()
+        self.inputHandler = None
+        pass
+   
+   
+        
+   
 class HealthBar():
     def __init__(leftright,name="testdefault"):
         #leftright defines if the health bar is for the left or the right player.
@@ -99,4 +173,3 @@ class HealthBar():
     def setKOs():
         #name is not so good, just add something to show how many round wins the player had.
 
-##what else do we need.. oooh.. i have lots on my list. but that shoud be just enough to get some reusable code working for some first test-plays.
