@@ -1,0 +1,2 @@
+stickfigure-step 4.69 u/s (25 fps, 16 frames, 3 units)
+stickfigure-run 20.23 u/s (25 fps, 21 frames, 17 units)
