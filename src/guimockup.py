@@ -20,6 +20,9 @@ class PlayerHud(object):
     def setHealth(self, percentage):
         self.healthBar['value'] = percentage
 
+    def setRoundIndicator(self, status):
+        self.roundIndicator['text'] = status
+
     def _createHealthBar(self):
 
         HEALTHBAR_SCALE = 0.4
@@ -34,8 +37,21 @@ class PlayerHud(object):
         self.healthBar.reparentTo(render2d)
 
     def _createRoundIndicator(self):
-        # TODO
-        pass
+
+        INDICATOR_SCALE = 0.08
+        indicatorPos = [-0.18, 0.80]
+        indicatorAlign = TextNode.ARight
+
+        if self.side == PLAYER_2_SIDE:
+
+            indicatorPos[0] *= -1
+            indicatorAlign = TextNode.ALeft
+
+
+        self.roundIndicator = OnscreenText(scale = INDICATOR_SCALE,
+                                           pos = indicatorPos
+                                           )
+        self.roundIndicator.reparentTo(render2d)
 
     def _createNameTag(self):
 
@@ -58,7 +74,9 @@ def test():
     import direct.directbase.DirectStart
     player1Hud = PlayerHud(PLAYER_1_SIDE, 'Player 1')
     player1Hud.setHealth(80)
+    player1Hud.setRoundIndicator('L V')
     player2Hud = PlayerHud(PLAYER_2_SIDE, 'Player 2')
+    player2Hud.setRoundIndicator('V')
     run()
 
 
