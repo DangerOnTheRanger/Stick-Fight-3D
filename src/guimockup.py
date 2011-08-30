@@ -1,6 +1,7 @@
 from direct.gui.DirectGui import *
 from direct.gui.OnscreenText import OnscreenText
 from panda3d.core import TextNode
+from direct.task import Task
 
 
 PLAYER_1_SIDE, PLAYER_2_SIDE = range(2)
@@ -69,6 +70,40 @@ class PlayerHud(object):
         self.nameTag.reparentTo(render2d)
 
 
+class Timer(object):
+    
+    def __init__(self):
+        TIMER_SCALE = 0.14
+        timerPos = [0.00, 0.85]
+        
+        self.time = 0
+        self.timeTag = OnscreenText(text = str(self.time),
+                                    align = TextNode.ACenter,
+                                    scale = TIMER_SCALE,
+                                    pos = timerPos
+                                    )
+        
+    def dec(self):
+        if self.time > 0:
+            self.time -= 1
+            self.timeTag["text"] = str(self.time)
+        
+        
+    def setTime(self, seconds):
+        self.time = seconds
+        self.timeTag["text"] = str(self.time)
+        
+    def getTime(self, seconds):
+        return self.time
+
+
+
+
+# only a test function
+def timerTask(timer, task): 
+    timer.dec()
+    return task.again 
+
 def test():
 
     import direct.directbase.DirectStart
@@ -77,6 +112,12 @@ def test():
     player1Hud.setRoundIndicator('L V')
     player2Hud = PlayerHud(PLAYER_2_SIDE, 'Player 2')
     player2Hud.setRoundIndicator('V')
+    timer = Timer()
+    timer.setTime(90)
+    
+    # example of how Timer which is itself only a GUI element can be used from outside
+    taskMgr.doMethodLater(1, timerTask, 'timerTask', extraArgs = [timer], appendTask = True)  
+    
     run()
 
 
