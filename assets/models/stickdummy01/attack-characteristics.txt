@@ -1,0 +1,12 @@
+# regions: 
+# 0 : lower (legs)
+# 1 : middle (torso)
+# 2 : high (head)
+# 3 : vertikal strike
+
+name:region:delay(frames):fps:delay(seconds)
+kick:1:4:25:0.16
+l_punch:2:3:25:0.12
+r_punch:2:3:25:0.12
+round-kick:1:25:25:1
+
