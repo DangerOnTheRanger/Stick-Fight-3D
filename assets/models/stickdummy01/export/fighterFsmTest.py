@@ -9,33 +9,55 @@ from direct.showbase import DirectObject
 
 class inputHandler(DirectObject.DirectObject):
     def __init__(self):
-        self.statearray = None
-        self.inputarray = None
+        #lets start by creating a mapping a key to a number, so we get independant of keyboards, controllers, cpu and networking.
+        #this code, still is keyboard dependant is it maps keys to an event number (the index of the key)
+        #using ["a","b","c"] , will make key a the event 0, b event 1 and so on.
+        #given my godlike power to define indices at will...
+        #i hearby delcare index  1 to 4 will map to up,down,left, right.
+        #further i declare thet event 5 shall be punch, 6 kick, 7 defense
+        #index 42 shall play a cute animation on cute characters and some raw and macho-like animation on raw-macho like chars
+        #dont dare to disobey.
+        #negative event numbers map to key-lift events . so we cant use event 0 as -0 == 0 , stuffing "" as index 0
+        keymap = ["","arrow_up","arrow_down","arrow_left","arrow_right","1","2","3"] #added button 1,2 and 3 , totaly at will. wanna change your keymap, change this array
+
+        self.keystatus = set()
+        for index,key in enumerate(keymap):
+            self.accept(key,self.setKey,[index,1] )
+            self.accept(key+"-up",self.setKey,[index,0])
+        self.events = [] #will store the combos event numbers and state requests
         
-    def mapInput(self,fsm=None,inputKeyArray=None,FSMStateArray=None ):
-        self.ignoreAll()
-        if not (fsm and inputKeyArray and FSMStateArray):
-            self.statearray= None
-            self.inputarray = None
-            
-            return
+    def setKey(self,eventnr,SetOrClear):
+        if SetOrClear:
+            self.keystatus.add(eventnr)
+        else:
+            self.keystatus.remove(eventnr)
+        for event in self.events:
+               ##set if the key goes down and the combo matches  OR     if the key goes up with no other combo specified.    
+               #like used when defending, or walking , walking states transition via idle.
+            if  (event[0] == eventnr and event[1] == self.keystatus) or  ( event[0]==-eventnr  )   :  
+                event[2][0].request(event[2][1])   
         
-        if len(inputKeyArray) == len(FSMStateArray):
-            for x in range(len(inputKeyArray)):
-                self.accept(inputKeyArray[x],fsm.request, [FSMStateArray[x] ])
-            
-        
-        self.statearray= FSMStateArray 
-        self.inputarray = inputKeyArray
-        #depending on the input keys,request the fsm state.
-        #this is a bit of a detour for the inputs, but good for separation with network and cpu controlls, aswell as combos, keeps the fsm clean
-           
-        
-    #def setKey(key,):
-    #    #one a button or combo was pressed...
-    #    if combodetect:
-    #        fsm.request(self.statearray[self.inputarray.index('thekey')])
-    #    #....
+    def clearMapping(self):
+        self.events = []
+    
+    def mapEvent(self,fsm,triggerevent,action,activeevents=[]):
+        """
+        each event consists of an list with 3 entries.
+        first entry, the event number of the key that shall trigger the event
+        second entry, a list containing the event numbers that needs to be "active" (aka buttons that are pressed)
+        (this should include the number from entry one, if it does not, it is automatically addded)
+        3rd entry, the function to call when the event is triggered
+        [   4,
+            [ 0,3 ],  #the 4 gets added automatically.
+            reguestStateRightUpPunch
+        ]
+        as 4 maps to the first attack key, 0 to up , and 3 to right, it would request the up-right-state
+        oh and.. if you define a combo that was already defined before.. it will be ignored.
+        """
+        activeevents = set(activeevents)
+        activeevents.add(triggerevent)
+        self.events.append([triggerevent,activeevents,[fsm,action]])
+
     
 
 class FighterFSM(FSM):  #inherits from direct.fsm.FSM
@@ -44,6 +66,20 @@ class FighterFSM(FSM):  #inherits from direct.fsm.FSM
                     ## i am not sure where to put the fighter actor. logically it belongs to the fighter class, but the fsm does a lot more with it.
                     ## guess it will end up in the fsm as this is the file created for each fighter individually.
                     ## or if we should inherit Fighter from FSM and simply stuff everything in there wich would be bad cause we copy all shared code around
+    def mapEvent(self,eventNr,event,activeevents=[]):
+        """
+        convenience function
+        """
+        self.inputHandler.mapEvent(self,eventNr,event,activeevents)
+        
+    def clearMapping(self):
+        """
+        another convenience function
+        """
+        self.inputHandler.clearMapping()
+        
+        
+    
     def setup(self,inputHandler,FighterClassInstance):
         
         self.fighter = Actor('./stickfigure', 
@@ -69,13 +105,16 @@ class FighterFSM(FSM):  #inherits from direct.fsm.FSM
     def enterIdle(self):
         #self.fighterinstance.setSpeed(0,0)
         self.fighter.loop("idle")
-        self.inputHandler.mapInput(self,["1","2","3","4"],["RPunch","LPunch","Kick","Defense"])
+        self.mapEvent( 5, "RPunch" )
+        self.mapEvent( 5, "LPunch", [2])
+        self.mapEvent( 6, "Kick" )  
+        self.mapEvent( 7, "Defense" )
         print "entered idle"
         
     def exitIdle(self):
         #self.fighterinstance.setSpeed(0,0) #cant hurt
         self.transitionTimer = None
-        self.inputHandler.mapInput()
+        self.clearMapping()
     
     #-------------------------
     
@@ -88,7 +127,7 @@ class FighterFSM(FSM):  #inherits from direct.fsm.FSM
         self.fighter.play('rpunch')
         self.transitionTimer= Sequence(Wait(self.fighter.getDuration()), Func(self.request,"Idle" ) )
         self.transitionTimer.start()
-        self.inputHandler.mapInput(self,["2"],["LPunch"]) #allows us to combo a punch followed by a kick.
+        self.mapEvent(5,"LPunch") #allows us to combo a punch followed by a kick.
 
     def filterRPunch(self,request,args):
         if self.transitionTimer.getT() > self.transitionTimer.getDuration()-0.2 :  #allow player to hit the next strike 0.2 to 0 seconds befor the animation finished
@@ -98,7 +137,7 @@ class FighterFSM(FSM):  #inherits from direct.fsm.FSM
     def exitRPunch(self):
         print "exiting rpunch"
         self.transitionTimer = None
-        self.inputHandler.mapInput()
+        self.clearMapping()
         pass
         
 
@@ -111,7 +150,7 @@ class FighterFSM(FSM):  #inherits from direct.fsm.FSM
         self.fighter.play('lpunch')
         self.transitionTimer= Sequence(Wait(self.fighter.getDuration()), Func(self.request,"Idle" ) )
         self.transitionTimer.start()
-        self.inputHandler.mapInput(self,["1"],["RPunch"]) #allows us to combo a punch followed by a kick.
+        self.mapEvent(5,"RPunch")
 
     def filterLPunch(self,request,args):
         if self.transitionTimer.getT() > self.transitionTimer.getDuration()-0.2 :  #allow player to hit the next strike 0.2 to 0 seconds befor the animation finished
@@ -121,46 +160,41 @@ class FighterFSM(FSM):  #inherits from direct.fsm.FSM
     def exitLPunch(self):
         print "exiting lpunch"
         self.transitionTimer = None
-        self.inputHandler.mapInput()
+        self.clearMapping()
         
     #--------------------------------    
         
     def enterKick(self):
         print "entering kick"
-        #self.fighterinstance.setSpeed(0,0) #just for illustration
         self.fighter.stop()
         self.fighter.play('kick')
         self.transitionTimer= Sequence(Wait(self.fighter.getDuration()), Func(self.request,"Idle" ) )
         self.transitionTimer.start()
-        #self.inputHandler.mapInput(self,["1"],["RPunch"]) #allows us to combo a punch followed by a kick.
 
-    def filterLPunch(self,request,args):
-        if self.transitionTimer.getT() > self.transitionTimer.getDuration()-0.2 :  #allow player to hit the next strike 0.2 to 0 seconds befor the animation finished
+    def filterKick(self,request,args):
+        if self.transitionTimer.getT() > self.transitionTimer.getDuration()-0.2 : 
             print "kick end"
             return request
 
     def exitLPunch(self):
         print "exiting kick"
         self.transitionTimer = None
-        self.inputHandler.mapInput()
+        self.clearMapping()
         
     #-----------------  
 
         
     def enterDefense(self):
         print "entering Defense"
-        #self.fighterinstance.setSpeed(0,0) #just for illustration
         self.fighter.stop()
         self.fighter.loop('defense')
-        #self.transitionTimer= Sequence(Wait(self.fighter.getDuration()), Func(self.request,"Idle" ) )
-        #self.transitionTimer.start()
-        self.inputHandler.mapInput(self,["4-up"],["Idle"]) #allows us to combo a punch followed by a kick.
+        self.mapEvent(-7,"Idle")
 
 
     def exitDefense(self):
         print "exiting Defense"
         self.transitionTimer = None
-        self.inputHandler.mapInput()
+        self.clearMapping()
         
     #-----------------       
 
