@@ -41,19 +41,7 @@ class inputHandler(DirectObject.DirectObject):
         self.events = []
     
     def mapEvent(self,fsm,triggerevent,action,activeevents=[]):
-        """
-        each event consists of an list with 3 entries.
-        first entry, the event number of the key that shall trigger the event
-        second entry, a list containing the event numbers that needs to be "active" (aka buttons that are pressed)
-        (this should include the number from entry one, if it does not, it is automatically addded)
-        3rd entry, the function to call when the event is triggered
-        [   4,
-            [ 0,3 ],  #the 4 gets added automatically.
-            reguestStateRightUpPunch
-        ]
-        as 4 maps to the first attack key, 0 to up , and 3 to right, it would request the up-right-state
-        oh and.. if you define a combo that was already defined before.. it will be ignored.
-        """
+
         activeevents = set(activeevents)
         activeevents.add(triggerevent)
         self.events.append([triggerevent,activeevents,[fsm,action]])
