@@ -5,14 +5,16 @@ from direct.interval.MetaInterval import Sequence,Parallel
 from direct.interval.FunctionInterval import Func,Wait
 
 from direct.showbase.ShowBase import ShowBase
-from direct.showbase import DirectObject
+
 
 from panda3d.core import NodePath
 
-from guimockup import PlayerHud
+from guimockup import PlayerHud , Timer
 from direct.task import Task
 
-class inputHandler(DirectObject.DirectObject):
+from direct.showbase import DirectObject
+
+class InputHandler(DirectObject.DirectObject):
     def __init__(self,keymap,side):
         #lets start by creating a mapping a key to a number, so we get independant of keyboards, controllers, cpu and networking.
         #this code, still is keyboard dependant is it maps keys to an event number (the index of the key)
@@ -73,12 +75,13 @@ class inputHandler(DirectObject.DirectObject):
         self.events.append([triggerevent,activeevents,[fsm,action]])
 
 from panda3d.core import BitMask32
+
 class Fighter():
     def __init__(self,characterPath , callOnDeath , side , keymap, name = None):
         #side indicates if the player is on the left or right side.
         
         self.side = side
-        self.speed = (0,0)
+        
         self.wins = 0 #counting won rounds, a doubleko/draw counts as win for both.
         
         self.callOnDeath = callOnDeath
@@ -90,29 +93,48 @@ class Fighter():
             name = "player"+str(1+bool(side))
         self.fighterNP = render.attachNewNode(name)
         
-        self.health= 100
-        self.healthBar = PlayerHud(side, name )
-        self.healthBar.setHealth(self.health)
-        self.healthBar.setRoundIndicator(' ')
         self.fsm = FighterFSM(name)
         self.fsm.setup(self,keymap,self.side)
+        self.healthBar = PlayerHud(side, name )
+        self.prepareFighter()
+    
+    def prepareFighter(self):
+        taskMgr.remove("player"+str(self.side))
+        self.speed = (0,0)
+        self.fsm.forceTransition("Idle")
+        print "preparing for new round"
+        self.health= 100
+        self.healthBar.setHealth(self.health)
+        self.healthBar.setRoundIndicator('V'*self.wins)
         
-        if side:
+        if self.side:
             self.fighterNP.setX(5)
         else:
             self.fighterNP.setX(-5)
-        
-        taskMgr.add(self.__playertask__, "player task")
+            
+        taskMgr.add(self.__playertask__, "player"+str(self.side))
     
     def setStatusBitMask(self,bitmask):
         self.statusBitMask = bitmask
         
     def setDefenseBitMask(self,bitmask):
         self.defenseBitMask = bitmask 
-         
+   
+    #getters and setters are a bit stupid here. properties from python 3 would be nice
+    def fighterWin(self):
+        #request a win-anim from the fsm if there are any , be sure to filter out that one if the player is KO
+        self.wins += 1
+        self.healthBar.setRoundIndicator('V'*self.wins)
+    
+    def getWins(self):
+        return self.wins   
+    
+    def getHealth(self):
+        return self.health
+        
     def getNP(self):
         return self.fighterNP
-        
+
     def setOpponent(self,opponent):
         self.opponent = opponent
         self.fighterNP.lookAt(self.opponent.getNP())
@@ -124,6 +146,8 @@ class Fighter():
         
     def getAttacked(self,attackBitMask,attackrange,damageHit,damageDodge=0): #the equivalent
         print "getting attacked!!"
+        if self.health<0:
+            return 0 #catch the event that the player is dead already. the forceTransition Hit made trouble
         dist = self.fighterNP.getY(self.opponent.getNP()) 
         if  dist > attackrange or dist < 0   :
             #attack misses due to out of range.
@@ -156,20 +180,20 @@ class Fighter():
     
     def setSpeed(self,x,y):
         self.speed = (x,y)
-    
-
-        #player motion should go here i guess, if the fsm provide any smarter way to do that disregard this definition.
+         #player motion should go here i guess, if the fsm provide any smarter way to do that disregard this definition.
         #checking for players health. couldbe done in getAttacked but that would propably break the last animation on the attacker side.
-        
-        
         #setx, sety 
+        
     def __playertask__(self,task):
         if self.health <= 0:
-            if self.callOnDeath:
-                self.callOnDeath()
+            taskMgr.remove("ko-task")
+            taskMgr.doMethodLater(0.2,self.callOnDeath,name="ko-task") #allow 0.2 seconds for double ko
+            self.fsm.forceTransition("Ko")
+            return
         self.fighterNP.setX(self.fighterNP,self.speed[1]*globalClock.getDt())
         self.fighterNP.setY(self.fighterNP,self.speed[0]*globalClock.getDt()) 
         return Task.cont
+
 
 class FighterFSM(FSM):  #inherits from direct.fsm.FSM
                     ##this class has to be written for each character in the game 
@@ -232,12 +256,23 @@ class FighterFSM(FSM):  #inherits from direct.fsm.FSM
         #self.fighter = FighterClassInstance.ActorNodePath #so we can directly play and loop the animation there.
         self.fighterinstance = FighterClassInstance
         self.fighter.reparentTo(self.fighterinstance.getNP())
-        self.inputHandler = inputHandler(keymap,side) #instance of the InputHandler class ... we definetly need custom keymaps to pass at this point
+        self.inputHandler = InputHandler(keymap,side) #instance of the InputHandler class ... we definetly need custom keymaps to pass at this point
         self.activeInterval = None #we will store our active sequence,parallel or interval here, so we can easily clean it up 
                                   #(altho we could go with naming them all the same,too. wich would be even more elegant)
         self.transitionTimer = None #usually holds a sequence like sequence(Wait(time),self.request('nextstate'))
         self.request("Idle")
     
+    
+    #----------
+    def enterKo(self):
+        self.clearMapping()
+        self.fighter.play("ko")
+    def filterKo(self,request,args):
+        #this blocks the fsm. but will be forced to idle by the fighter class
+        return
+    def exitKo(self):
+        pass    
+    #-----------
     def enterHit(self):
         self.clearMapping()
         self.fighter.play("hit")
@@ -248,7 +283,7 @@ class FighterFSM(FSM):  #inherits from direct.fsm.FSM
         self.clearMapping()
         self.transitionTimer = None
         self.activeInterval = None
-
+    #------------
     def enterIdle(self):
         #self.fighterinstance.setSpeed(0,0)
         newBitMask = BitMask32()
@@ -411,13 +446,71 @@ class FighterFSM(FSM):  #inherits from direct.fsm.FSM
     #-----------------       
 
 
-base = ShowBase()
-f1 = Fighter(None,None,0,["f","t","r","d","x","v","l"]) #left player
-f2 = Fighter(None,None,1,["arrow_up","arrow_down","arrow_left","arrow_right","1","2","3"])
-#in case you wonder... i am not using a qwert keyboard layout. it would map to o l k oe q w e using a german keyboard .. use your own ones.
+class Match():
+    def __init__(self, Character1, Character2, keymapPlayer1,keymapPlayer2,roundTime=10,name1="Player1",name2="Player2"):
+        ###character 1 and 2 are strings pointing to the assets with the character. will be delivered by the character-selection screen.
+        ### till we have the selection screen, hardcode or default them.
+        
+        #arena = #... load the arena here, be sure to set propper bitmasks on the floor and ring-out geometry
+        
+        self.player1 = Fighter(Character1, self.roundEnd, 0, keymapPlayer1 ,name=name1 )
+        self.player2 = Fighter(Character2, self.roundEnd, 1, keymapPlayer2 ,name=name2 )
+        
+        self.player1.setOpponent(self.player2)
+        self.player2.setOpponent(self.player1)
+        
+        self.roundTime=roundTime
+        self.timer = Timer(self.roundEnd)
+        self.timer.setTime(roundTime)
+        self.timer.start()
 
-f1.setOpponent(f2)
-f2.setOpponent(f1)
+                
+    def roundEnd(self,task=None):
+        self.timer.stop()
+        #double ko would require a variable like roundOver.
+        #short delay to allow double ko. 
+        if self.player1.getHealth()<0 and self.player2.getHealth() < 0:
+            #double knockout.
+            self.player1.fighterWin()
+            self.player2.fighterWin()
+            
+        elif self.player2.getHealth() > self.player1.getHealth():
+            self.player2.fighterWin()
+            #player2 wins
+        elif self.player2.getHealth() < self.player1.getHealth():
+            self.player1.fighterWin()
+        else:
+            #both players with the same health??? W T F ??
+            pass
+            
+        #in case of double time-up we need to disable inputs of the player till the next round starts.
+        Sequence(Wait(5), Func(self.player1.prepareFighter )).start()
+        Sequence(Wait(5), Func(self.player2.prepareFighter )).start()
+        self.timer.setTime(self.roundTime)
+        Sequence(Wait(5), Func(self.timer.start)).start()
+        
+        print self.player1.getWins(),self.player2.getWins()
+        if self.player1.getWins() >=3 and self.player2.getWins() >=3:
+            #match ended in a draw
+            self.endMatch()
+        elif self.player1.getWins() >=3:
+            #player1 wins
+            self.endMatch()
+        elif self.player2.getWins() >=3 :
+            #player2 wins
+            self.endMatch()
+        #update the round-wins gui. display guistuff, play win animation on chars, do whatever you like..
+        #reset the char healt,reset the positions and fsm states, then let the fun go on.
+        #eventually clear the round-end variable.
+        #if one player has 3 wins. end match
+ 
+    def endMatch(self):
+        print "match ended!"
+        #preferably show splashscreen till the menu has loaded
+        #remove players and the arena.
+
+base = ShowBase()
+Match(None,None,["f","t","r","d","x","v","l"],["arrow_up","arrow_down","arrow_left","arrow_right","1","2","3"])
 
 base.disableMouse()
 base.camera.setY(-30)
