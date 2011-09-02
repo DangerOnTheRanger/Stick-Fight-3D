@@ -67,7 +67,8 @@ class Fighter():
     def attack(self,attackBitMask,attackrange,damageHit,damageDodge=0): #those variables will be supplied by the fsm states later on. 
                                                              #function is pretty redundant... for structure only, and for early days
         print 'attacking'
-        self.opponent.getAttacked(attackBitMask,attackrange,damageHit,damageDodge)
+        attackstatus = self.opponent.getAttacked(attackBitMask,attackrange,damageHit,damageDodge)
+        return attackstatus
         
     def getAttacked(self,attackBitMask,attackrange,damageHit,damageDodge=0): #the equivalent
         print "getting attacked!!"

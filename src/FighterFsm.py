@@ -3,8 +3,11 @@ from direct.actor.Actor import Actor
 
 from direct.interval.MetaInterval import Sequence,Parallel
 from direct.interval.FunctionInterval import Func,Wait
+from direct.interval.SoundInterval import SoundInterval
 
 from panda3d.core import BitMask32
+
+from random import choice
 
 from InputHandler import InputHandler
 
@@ -42,8 +45,15 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
         """
         more convenience function, this one attacks the opponent
         """
-        self.fighterinstance.attack(attackBitMask,attackrange,damageHit,damageDodge)
-    
+        hit = self.fighterinstance.attack(attackBitMask,attackrange,damageHit,damageDodge)
+        print "attack return",hit
+        if hit == 0:
+            choice(self.misssounds).start()
+        elif hit == 1:
+            choice(self.blocksounds).start()
+        if hit == 2:
+            choice(self.hitsounds).start()
+        
     def setup(self,FighterClassInstance,keymap,side):
         path = "../assets/models/stickdummy01/export/"
         self.fighter = Actor(path+'stickfigure', 
@@ -61,6 +71,37 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
 
                                         })
         #model was rotated the wrong way in blender.. darn fixing it
+        path = "../assets/sounds/"
+        self.hitsounds = []
+        self.misssounds = []
+        self.blocksounds = []
+
+        for x in range(1,6):        
+            Sound = loader.loadSfx(path+"hit/hit"+str(x)+".wav")
+            self.hitsounds.append( SoundInterval(
+                                    Sound,
+                                    loop = 0,
+                                    volume =1.0,
+                                    )
+                                 )                                                       
+        for x in range(1,4):        
+            Sound = loader.loadSfx(path+"block/block"+str(x)+".wav")
+            self.blocksounds.append( SoundInterval(
+                                    Sound,
+                                    loop = 0,
+                                    volume =1.0,
+                                    )
+                                 )    
+        
+        for x in range(1,7):        
+            Sound = loader.loadSfx(path+"miss/miss"+str(x)+".wav")
+            self.misssounds.append( SoundInterval(
+                                    Sound,
+                                    loop = 0,
+                                    volume =1.0,
+                                    )
+                                 )
+        
         self.fighter.setH(180)
         self.fighter.flattenMedium()
                                       
