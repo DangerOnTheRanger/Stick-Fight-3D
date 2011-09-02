@@ -32,7 +32,7 @@ class InputHandler(DirectObject.DirectObject):
             
         if SetOrClear:
             self.keystatus.add(eventnr)
-        else:
+        elif eventnr in self.keystatus:
             self.keystatus.remove(eventnr)
         for event in self.events:
                ##set if the key goes down and the combo matches  OR     if the key goes up with no other combo specified.    
