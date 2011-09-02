@@ -1,7 +1,7 @@
 from direct.interval.MetaInterval import Sequence
 from direct.interval.FunctionInterval import Func,Wait
-from Hud import Timer
-from Fighter import Fighter
+from hud import Timer
+from fighter import Fighter
 class Match():
     def __init__(self, Character1, Character2, arena, keymapPlayer1, keymapPlayer2, roundTime=90, name1="Player1", name2="Player2"):
         ###character 1 and 2 are strings pointing to the assets with the character. will be delivered by the character-selection screen.

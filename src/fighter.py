@@ -1,7 +1,7 @@
 from panda3d.core import BitMask32
-from Hud import PlayerHud
-from FighterFsm import FighterFsm
-from InputHandler import InputHandler
+from hud import PlayerHud
+from fighterFsm import FighterFsm
+from inputHandler import InputHandler
 class Fighter():
     def __init__(self,characterPath , callOnDeath , side , keymap, name = None):
         #side indicates if the player is on the left or right side.

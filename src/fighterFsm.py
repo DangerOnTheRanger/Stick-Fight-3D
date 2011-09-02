@@ -37,6 +37,17 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
 
                                         })
         #model was rotated the wrong way in blender.. darn fixing it
+        self.fighter.setH(180)
+        self.fighter.flattenMedium()                           
+        self.fighter.reparentTo(render)
+        self.fighter.setBlend(frameBlend=True)
+        
+        self.fighterinstance = FighterClassInstance
+        self.fighter.reparentTo(self.fighterinstance.getNP())
+        self.activeInterval = None #we will store our active sequence,parallel or interval here, so we can easily clean it up 
+        self.transitionTimer = None #usually holds a sequence like sequence(Wait(time),self.request('nextstate'))
+        
+        #loading sounds... could go in an extra-file
         path = "../assets/sounds/"
         self.hitsounds = []
         self.misssounds = []
@@ -67,17 +78,6 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
                                     volume =1.0,
                                     )
                                  )
-        
-        self.fighter.setH(180)
-        self.fighter.flattenMedium()
-                                      
-        self.fighter.reparentTo(render)
-        
-        #self.fighter = FighterClassInstance.ActorNodePath #so we can directly play and loop the animation there.
-        self.fighterinstance = FighterClassInstance
-        self.fighter.reparentTo(self.fighterinstance.getNP())
-        self.activeInterval = None #we will store our active sequence,parallel or interval here, so we can easily clean it up 
-        self.transitionTimer = None #usually holds a sequence like sequence(Wait(time),self.request('nextstate'))
         self.request("Idle")
     
     def mapEvent(self,eventNr,event,activeevents=[]):

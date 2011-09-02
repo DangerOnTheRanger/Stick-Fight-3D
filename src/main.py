@@ -1,5 +1,5 @@
 from direct.showbase.ShowBase import ShowBase
-from Match import Match
+from match import Match
 base = ShowBase()
 
 Match(None,None,None,["f","t","r","d","x","v","l"],["arrow_up","arrow_down","arrow_left","arrow_right","1","2","3"])
