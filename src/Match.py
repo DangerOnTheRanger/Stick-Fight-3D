@@ -20,11 +20,20 @@ class Match():
         
         self.roundTime=roundTime
         self.timer = Timer(self.roundEnd)
-        self.timer.setTime(roundTime)
+        self.roundStart()
+    
+    def roundStart(self,task=None):
+        self.player1.prepareFighter()
+        self.player2.prepareFighter()
+        self.timer.setTime(self.roundTime)
         self.timer.start()
-
+        self.roundEnded = False
                 
     def roundEnd(self,task=None):
+        if self.roundEnded:
+            return
+        else:
+            self.roundEnded = True
         self.timer.stop()
         #double ko would require a variable like roundOver.
         #short delay to allow double ko. 
@@ -42,22 +51,27 @@ class Match():
             #both players with the same health??? W T F ??
             pass
             
-        #in case of double time-up we need to disable inputs of the player till the next round starts.
-        Sequence(Wait(5), Func(self.player1.prepareFighter )).start()
-        Sequence(Wait(5), Func(self.player2.prepareFighter )).start()
-        self.timer.setTime(self.roundTime)
-        Sequence(Wait(5), Func(self.timer.start)).start()
+        
         
         print self.player1.getWins(),self.player2.getWins()
         if self.player1.getWins() >=3 and self.player2.getWins() >=3:
             #match ended in a draw
             self.endMatch()
+            return
         elif self.player1.getWins() >=3:
             #player1 wins
             self.endMatch()
+            return
         elif self.player2.getWins() >=3 :
             #player2 wins
             self.endMatch()
+            return
+        else:
+            #in case of double time-up we need to disable inputs of the player till the next round starts.
+            pass
+        
+        taskMgr.doMethodLater(3,self.roundStart,"startRound")
+            
         #update the round-wins gui. display guistuff, play win animation on chars, do whatever you like..
         #reset the char healt,reset the positions and fsm states, then let the fun go on.
         #eventually clear the round-end variable.

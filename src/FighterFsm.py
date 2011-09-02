@@ -9,7 +9,7 @@ from panda3d.core import BitMask32
 
 from random import choice
 
-from InputHandler import InputHandler
+
 
 class FighterFsm(FSM):  #inherits from direct.fsm.FSM
                     ##this class has to be written for each character in the game 
@@ -17,44 +17,10 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
                     ## i am not sure where to put the fighter actor. logically it belongs to the fighter class, but the fsm does a lot more with it.
                     ## guess it will end up in the fsm as this is the file created for each fighter individually.
                     ## or if we should inherit Fighter from FSM and simply stuff everything in there wich would be bad cause we copy all shared code around
-    def mapEvent(self,eventNr,event,activeevents=[]):
-        """
-        convenience function
-        """
-        self.inputHandler.mapEvent(self,eventNr,event,activeevents)
-        
-    def clearMapping(self):
-        """
-        another convenience function
-        """
-        self.inputHandler.clearMapping()
    
-    def setSBM(self,bitmask):
-        """
-        yet another convenience function, sets the status bit mask
-        """
-        self.fighterinstance.setStatusBitMask(bitmask)
         
-    def setDBM(self,bitmask):
-        """
-        aaand yet another convenience function, sets the defense bit mask
-        """
-        self.fighterinstance.setDefenseBitMask(bitmask)    
-            
-    def attack(self,attackBitMask,attackrange,damageHit,damageDodge=0):
-        """
-        more convenience function, this one attacks the opponent
-        """
-        hit = self.fighterinstance.attack(attackBitMask,attackrange,damageHit,damageDodge)
-        print "attack return",hit
-        if hit == 0:
-            choice(self.misssounds).start()
-        elif hit == 1:
-            choice(self.blocksounds).start()
-        if hit == 2:
-            choice(self.hitsounds).start()
-        
-    def setup(self,FighterClassInstance,keymap,side):
+    def setup(self,FighterClassInstance,inputHandlerInstance,side):
+        self.inputHandler = inputHandlerInstance
         path = "../assets/models/stickdummy01/export/"
         self.fighter = Actor(path+'stickfigure', 
                                         {
@@ -110,22 +76,71 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
         #self.fighter = FighterClassInstance.ActorNodePath #so we can directly play and loop the animation there.
         self.fighterinstance = FighterClassInstance
         self.fighter.reparentTo(self.fighterinstance.getNP())
-        self.inputHandler = InputHandler(keymap,side) #instance of the InputHandler class ... we definetly need custom keymaps to pass at this point
         self.activeInterval = None #we will store our active sequence,parallel or interval here, so we can easily clean it up 
-                                  #(altho we could go with naming them all the same,too. wich would be even more elegant)
         self.transitionTimer = None #usually holds a sequence like sequence(Wait(time),self.request('nextstate'))
         self.request("Idle")
     
-    
+    def mapEvent(self,eventNr,event,activeevents=[]):
+        """
+        convenience function
+        """
+        self.inputHandler.mapEvent(self,eventNr,event,activeevents)
+        
+    def clearMapping(self):
+        """
+        another convenience function
+        """
+        self.inputHandler.clearMapping()
+   
+    def setSBM(self,bitmask):
+        """
+        yet another convenience function, sets the status bit mask
+        """
+        self.fighterinstance.setStatusBitMask(bitmask)
+        
+    def setDBM(self,bitmask):
+        """
+        aaand yet another convenience function, sets the defense bit mask
+        """
+        self.fighterinstance.setDefenseBitMask(bitmask)    
+            
+    def attack(self,attackBitMask,attackrange,damageHit,damageDodge=0):
+        """
+        more convenience function, this one attacks the opponent
+        """
+        hit = self.fighterinstance.attack(attackBitMask,attackrange,damageHit,damageDodge)
+        print "attack return",hit
+        if hit == 0:
+            choice(self.misssounds).start()
+        elif hit == 1:
+            choice(self.blocksounds).start()
+        elif hit == 2:
+            choice(self.hitsounds).start()
+        elif hit == 3:
+            #the other player went ko , go to win-state
+            choice(self.hitsounds).start()
+        elif hit == 4:
+            pass
+            #the other player is ko already..    
+
+    def cancelActive(self,task=0):
+        if self.activeInterval:
+            self.activeInterval.remove()
+            self.activeInterval = None
+            
     #----------
     def enterKo(self):
+        newBitMask = BitMask32()
+        self.setSBM(newBitMask) #make the player un-attackable
+        taskMgr.doMethodLater(0.2,self.cancelActive,"cancelActive") #timer to allow double-KO
         self.clearMapping()
         self.fighter.play("ko")
     def filterKo(self,request,args):
         #this blocks the fsm. but will be forced to idle by the fighter class
         return
     def exitKo(self):
-        pass    
+        pass
+          
     #-----------
     def enterHit(self):
         self.clearMapping()

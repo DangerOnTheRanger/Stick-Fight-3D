@@ -1,9 +1,11 @@
 from panda3d.core import BitMask32
 from Hud import PlayerHud
 from FighterFsm import FighterFsm
+from InputHandler import InputHandler
 class Fighter():
     def __init__(self,characterPath , callOnDeath , side , keymap, name = None):
         #side indicates if the player is on the left or right side.
+        
         
         self.side = side
         
@@ -18,8 +20,9 @@ class Fighter():
             name = "player"+str(1+bool(side))
         self.fighterNP = render.attachNewNode(name)
         
+        self.inputHandler = InputHandler(keymap,self.side)
         self.fsm = FighterFsm(name)
-        self.fsm.setup(self,keymap,self.side)
+        self.fsm.setup(self,self.inputHandler,self.side)
         self.healthBar = PlayerHud(side, name )
         self.prepareFighter()
     
@@ -47,7 +50,7 @@ class Fighter():
    
     #getters and setters are a bit stupid here. properties from python 3 would be nice
     def fighterWin(self):
-        #request a win-anim from the fsm if there are any , be sure to filter out that one if the player is KO
+        #request a win-anim from the fsm if there are any
         self.wins += 1
         self.healthBar.setRoundIndicator('V'*self.wins)
     
@@ -66,56 +69,45 @@ class Fighter():
    
     def attack(self,attackBitMask,attackrange,damageHit,damageDodge=0): #those variables will be supplied by the fsm states later on. 
                                                              #function is pretty redundant... for structure only, and for early days
-        print 'attacking'
         attackstatus = self.opponent.getAttacked(attackBitMask,attackrange,damageHit,damageDodge)
         return attackstatus
         
-    def getAttacked(self,attackBitMask,attackrange,damageHit,damageDodge=0): #the equivalent
-        print "getting attacked!!"
-        if self.health<0:
-            return 0 #catch the event that the player is dead already. the forceTransition Hit made trouble
+    def getAttacked(self,attackBitMask,attackrange,damageHit,damageDodge=0):
+        """
+        returns 0 if not hit, 1 if hit was blocked, 2 if hit, 3 for hit+KO 
+        """
+        if self.health <=0:
+            return 4 #player is ko already
         dist = self.fighterNP.getY(self.opponent.getNP()) 
         if  dist > attackrange or dist < 0   :
             #attack misses due to out of range.
-            print "missed due to long distance"
             return 0 
 
         if self.statusBitMask & attackBitMask == 0: # attak misses cause the player avoided it. went low or so.
-            print "attack missed, no bitmask match"
             return 0
             
         print (self.defenseBitMask & attackBitMask).getWord()    
         if (self.defenseBitMask & attackBitMask).getWord():
-            
-            print "attack got dodged"
             self.health -= damageDodge
             self.healthBar.setHealth(self.health)
-            #set health down by damageDodge if any.
-            #set fsm so it goes into the right anim and so on
             return 1 #hit,... but blocked so no combos 
             
         else:
-            print "hit it!"
             self.health -= damageHit
             self.healthBar.setHealth(self.health)
+            if self.health <= 0 : #if KO
+                taskMgr.remove("player"+str(self.side))
+                self.fsm.forceTransition("Ko")
+                #actually make the match.py allow the other player to KO (in case of doubleKO,befor calling round end.
+                taskMgr.doMethodLater(0.2,self.callOnDeath,"RoundEnd") 
+                return 3
             self.fsm.forceTransition("Hit")
-            #draw health
-            #set fsm state.
-            print self.health
-            return 2 #in ya face .... smash.
+            return 2 #regular hit
     
     def setSpeed(self,x,y):
         self.speed = (x,y)
-         #player motion should go here i guess, if the fsm provide any smarter way to do that disregard this definition.
-        #checking for players health. couldbe done in getAttacked but that would propably break the last animation on the attacker side.
-        #setx, sety 
-        
+ 
     def __playertask__(self,task):
-        if self.health <= 0:
-            taskMgr.remove("ko-task")
-            taskMgr.doMethodLater(0.2,self.callOnDeath,name="ko-task") #allow 0.2 seconds for double ko
-            self.fsm.forceTransition("Ko")
-            return
         self.fighterNP.setX(self.fighterNP,self.speed[1]*globalClock.getDt())
         self.fighterNP.setY(self.fighterNP,self.speed[0]*globalClock.getDt()) 
         return task.cont
