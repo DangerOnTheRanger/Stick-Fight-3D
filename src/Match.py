@@ -3,17 +3,17 @@ from direct.interval.FunctionInterval import Func,Wait
 from Hud import Timer
 from Fighter import Fighter
 class Match():
-    def __init__(self, Character1, Character2, keymapPlayer1,keymapPlayer2,roundTime=90,name1="Player1",name2="Player2"):
+    def __init__(self, Character1, Character2, arena, keymapPlayer1, keymapPlayer2, roundTime=90, name1="Player1", name2="Player2"):
         ###character 1 and 2 are strings pointing to the assets with the character. will be delivered by the character-selection screen.
         ### till we have the selection screen, hardcode or default them.
-        
-        #arena = #... load the arena here, be sure to set propper bitmasks on the floor and ring-out geometry
+
         self.arena = loader.loadModel('../assets/models/floortile/floortile')
         self.arena.reparentTo(render)
         self.arena.setScale(4)
+        #TODO:loading arena, setting up arena floor collision bitmasks.
         
-        self.player1 = Fighter(Character1, self.roundEnd, 0, keymapPlayer1 ,name=name1 )
-        self.player2 = Fighter(Character2, self.roundEnd, 1, keymapPlayer2 ,name=name2 )
+        self.player1 = Fighter(Character1, self.roundEnd, 0, keymapPlayer1, name=name1 )
+        self.player2 = Fighter(Character2, self.roundEnd, 1, keymapPlayer2, name=name2 )
         
         self.player1.setOpponent(self.player2)
         self.player2.setOpponent(self.player1)
@@ -30,6 +30,7 @@ class Match():
         self.roundEnded = False
                 
     def roundEnd(self,task=None):
+        #TODO: hook in GUI to display apporpriate messages for KO and Draw , player wins , match end etc
         if self.roundEnded:
             return
         else:
@@ -42,14 +43,27 @@ class Match():
             self.player1.fighterWin()
             self.player2.fighterWin()
             
-        elif self.player2.getHealth() > self.player1.getHealth():
+        elif self.player2.getHealth() > 0 > self.player1.getHealth():
             self.player2.fighterWin()
-            #player2 wins
-        elif self.player2.getHealth() < self.player1.getHealth():
+            #player2 wins by ko
+            
+        elif self.player2.getHealth() < 0 < self.player1.getHealth():
             self.player1.fighterWin()
+            #player1 wins by ko
+            
+        elif self.player2.getHealth() > self.player1.getHealth() :
+            self.player2.fighterWin() 
+            #put both an a state where they cant attack each other!!
+            
+        elif self.player2.getHealth() < self.player1.getHealth() :   
+            self.player1.fighterWin() 
+            #put both an a state where they cant attack each other!!
+             
         else:
+            self.player1.fighterWin()
+            self.player2.fighterWin() 
             #both players with the same health??? W T F ??
-            pass
+            #put in non-attack-state 
             
         
         
@@ -62,12 +76,11 @@ class Match():
             #player1 wins
             self.endMatch()
             return
-        elif self.player2.getWins() >=3 :
+        elif self.player2.getWins() >=3:
             #player2 wins
             self.endMatch()
             return
         else:
-            #in case of double time-up we need to disable inputs of the player till the next round starts.
             pass
         
         taskMgr.doMethodLater(3,self.roundStart,"startRound")
@@ -79,6 +92,7 @@ class Match():
  
     def endMatch(self):
         print "match ended!"
+        #TODO: continue at this point , show end screen, return to menu, clean up the scene.
         #preferably show splashscreen till the menu has loaded
         #remove players and the arena.
 

@@ -9,7 +9,7 @@ from panda3d.core import BitMask32
 
 from random import choice
 
-
+#TODO: adding states for all animations, an before and after round state ,etc.. this pretty much is the core of the game.
 
 class FighterFsm(FSM):  #inherits from direct.fsm.FSM
                     ##this class has to be written for each character in the game 
@@ -109,7 +109,6 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
         more convenience function, this one attacks the opponent
         """
         hit = self.fighterinstance.attack(attackBitMask,attackrange,damageHit,damageDodge)
-        print "attack return",hit
         if hit == 0:
             choice(self.misssounds).start()
         elif hit == 1:
@@ -130,8 +129,6 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
             
     #----------
     def enterKo(self):
-        newBitMask = BitMask32()
-        self.setSBM(newBitMask) #make the player un-attackable
         taskMgr.doMethodLater(0.2,self.cancelActive,"cancelActive") #timer to allow double-KO
         self.clearMapping()
         self.fighter.play("ko")
@@ -167,7 +164,6 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
         self.mapEvent( 7, "Defense" )
         Func(self.inputHandler.pollEvents).start() #slightly hacky but we cant call that WITHIN the transition of entering idle. so it will be called next frame.
         #doesnt look logic but saves craploads of uncool code, trust me
-        print "entered idle"
         
     def exitIdle(self):
         #self.fighterinstance.setSpeed(0,0) #cant hurt
@@ -204,10 +200,9 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
         self.clearMapping()
     
     #-------------------------
-    #example of a punch, wich default returns to idle, if no buttons are pressed. also blocks button presses/requests until sort befor the end. 
+    #example of a punch, wich default returns to idle, if no buttons are pressed. also blocks button presses/requests until short befor the end. 
     #at the end it is possible to transition to any legal state we defined earlier 
     def enterRPunch(self):
-        print "entering rpunch"
         #self.fighterinstance.setSpeed(0,0) #just for illustration
         self.fighter.stop()
         self.fighter.play('rpunch')
@@ -224,11 +219,9 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
 
     def filterRPunch(self,request,args):
         if self.transitionTimer.getT() > self.transitionTimer.getDuration()-0.2 :  #allow player to hit the next strike 0.2 to 0 seconds befor the animation finished
-            print "combo r"
             return request
 
     def exitRPunch(self):
-        print "exiting rpunch"
         self.transitionTimer = None
         self.activeInterval = None
         self.clearMapping()
@@ -238,7 +231,6 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
     #---------------------------
    
     def enterLPunch(self):
-        print "entering lpunch"
         #self.fighterinstance.setSpeed(0,0) #just for illustration
         self.fighter.stop()
         self.fighter.play('lpunch')
@@ -254,11 +246,9 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
 
     def filterLPunch(self,request,args):
         if self.transitionTimer.getT() > self.transitionTimer.getDuration()-0.2 :  #allow player to hit the next strike 0.2 to 0 seconds befor the animation finished
-            print "combo l"
             return request
 
     def exitLPunch(self):
-        print "exiting lpunch"
         self.transitionTimer = None
         self.activeInterval = None
         self.clearMapping()
@@ -266,7 +256,6 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
     #--------------------------------    
         
     def enterKick(self):
-        print "entering kick"
         self.fighter.stop()
         self.fighter.play('kick')
         self.transitionTimer= Sequence(Wait(self.fighter.getDuration()), Func(self.request,"Idle" ) )
@@ -280,25 +269,21 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
 
     def filterKick(self,request,args):
         if self.transitionTimer.getT() > self.transitionTimer.getDuration()-0.2 : 
-            print "kick end"
             return request
 
     def exitLPunch(self):
-        print "exiting kick"
         self.transitionTimer = None
         self.activeInterval = None
         self.clearMapping()
-        
+  
     #-----------------  
 
-        
     def enterDefense(self):
         newBitMask = BitMask32()
         newBitMask.setBit(1)
         newBitMask.setBit(2)
         self.setDBM(newBitMask)
         
-        print "entering Defense"
         self.fighter.stop()
         self.fighter.loop('defense')
         self.mapEvent(-7,"Idle")
@@ -307,7 +292,6 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
     def exitDefense(self):
         newBitMask = BitMask32()
         self.setDBM(newBitMask)
-        print "exiting Defense"
         self.transitionTimer = None
         self.activeInterval = None
         self.clearMapping()
