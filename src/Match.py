@@ -8,6 +8,9 @@ class Match():
         ### till we have the selection screen, hardcode or default them.
         
         #arena = #... load the arena here, be sure to set propper bitmasks on the floor and ring-out geometry
+        self.arena = loader.loadModel('../assets/models/floortile/floortile')
+        self.arena.reparentTo(render)
+        self.arena.setScale(4)
         
         self.player1 = Fighter(Character1, self.roundEnd, 0, keymapPlayer1 ,name=name1 )
         self.player2 = Fighter(Character2, self.roundEnd, 1, keymapPlayer2 ,name=name2 )

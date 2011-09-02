@@ -1,0 +1,71 @@
+<CoordinateSystem> { Z-up } 
+<Material> Material {
+  <Scalar> diffr { 0.640 }
+  <Scalar> diffg { 0.640 }
+  <Scalar> diffb { 0.640 }
+  <Scalar> specr { 0.500 }
+  <Scalar> specg { 0.500 }
+  <Scalar> specb { 0.500 }
+  <Scalar> shininess { 12.5 }
+  <Scalar> emitr { 0.000 }
+  <Scalar> emitg { 0.000 }
+  <Scalar> emitb { 0.000 }
+}
+
+<Texture> floortiles0.png {
+  "floortiles0.png"
+}
+
+  <Group> Plane {
+    <Transform> {
+      <Matrix4> {
+        4.000 0.000 0.000 0.000
+        0.000 4.000 0.000 0.000
+        0.000 0.000 4.000 0.000
+        0.000 0.000 0.000 1.000
+      }
+    }
+    
+    <VertexPool> Plane {
+      <Vertex> 0 {
+        4.000 4.000 0.000
+        <UV>  {
+          0.000 0.000
+          <Tangent> { -1.000 -0.000 0.000 }
+          <Binormal> { -0.000 -1.000 0.000 }
+        }
+      }
+      <Vertex> 1 {
+        -4.000 4.000 0.000
+        <UV>  {
+          1.000 0.000
+          <Tangent> { -1.000 -0.000 0.000 }
+          <Binormal> { -0.000 -1.000 0.000 }
+        }
+      }
+      <Vertex> 2 {
+        -4.000 -4.000 0.000
+        <UV>  {
+          1.000 1.000
+          <Tangent> { -1.000 -0.000 0.000 }
+          <Binormal> { -0.000 -1.000 0.000 }
+        }
+      }
+      <Vertex> 3 {
+        4.000 -4.000 0.000
+        <UV>  {
+          0.000 1.000
+          <Tangent> { -1.000 -0.000 0.000 }
+          <Binormal> { 0.000 -1.000 0.000 }
+        }
+      }
+    }
+    
+    
+    <Polygon> {
+      <TRef> { floortiles0.png }
+      <MRef> { Material }
+      <Normal> {0.000 0.000 1.000}
+      <VertexRef> { 0 1 2 3 <Ref> { Plane }}
+    }
+  }
