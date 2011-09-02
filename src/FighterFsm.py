@@ -6,8 +6,9 @@ from direct.interval.FunctionInterval import Func,Wait
 
 from panda3d.core import BitMask32
 
+from InputHandler import InputHandler
 
-class FighterFSM(FSM):  #inherits from direct.fsm.FSM
+class FighterFsm(FSM):  #inherits from direct.fsm.FSM
                     ##this class has to be written for each character in the game 
                     ####unfortunately that much coding per char is required until we can autogenerate based on artists input
                     ## i am not sure where to put the fighter actor. logically it belongs to the fighter class, but the fsm does a lot more with it.
@@ -44,19 +45,19 @@ class FighterFSM(FSM):  #inherits from direct.fsm.FSM
         self.fighterinstance.attack(attackBitMask,attackrange,damageHit,damageDodge)
     
     def setup(self,FighterClassInstance,keymap,side):
-        
-        self.fighter = Actor('./stickfigure', 
+        path = "../assets/models/stickdummy01/export/"
+        self.fighter = Actor(path+'stickfigure', 
                                         {
-                                          'rpunch'      :'stickfigure-r_punch',
-                                          'lpunch'      :'stickfigure-l_punch',
-                                          'hit'         :'stickfigure-hit'    ,
-                                          'defense'     :'stickfigure-defense',
-                                          'idle'        :'stickfigure-idle'   ,
-                                          'kick'        :'stickfigure-kick'   ,
-                                          'run'         :'stickfigure-run'    ,
-                                          'step'        :'stickfigure-step'   ,
-                                          'ko'          :'stickfigure-ko'     ,
-                                          'round-kick'  :'stickfigure-round-kick'
+                                          'rpunch'      :path+'stickfigure-r_punch',
+                                          'lpunch'      :path+'stickfigure-l_punch',
+                                          'hit'         :path+'stickfigure-hit'    ,
+                                          'defense'     :path+'stickfigure-defense',
+                                          'idle'        :path+'stickfigure-idle'   ,
+                                          'kick'        :path+'stickfigure-kick'   ,
+                                          'run'         :path+'stickfigure-run'    ,
+                                          'step'        :path+'stickfigure-step'   ,
+                                          'ko'          :path+'stickfigure-ko'     ,
+                                          'round-kick'  :path+'stickfigure-round-kick'
 
                                         })
         #model was rotated the wrong way in blender.. darn fixing it

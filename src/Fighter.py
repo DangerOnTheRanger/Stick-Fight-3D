@@ -1,5 +1,6 @@
 from panda3d.core import BitMask32
 from Hud import PlayerHud
+from FighterFsm import FighterFsm
 class Fighter():
     def __init__(self,characterPath , callOnDeath , side , keymap, name = None):
         #side indicates if the player is on the left or right side.
@@ -17,7 +18,7 @@ class Fighter():
             name = "player"+str(1+bool(side))
         self.fighterNP = render.attachNewNode(name)
         
-        self.fsm = FighterFSM(name)
+        self.fsm = FighterFsm(name)
         self.fsm.setup(self,keymap,self.side)
         self.healthBar = PlayerHud(side, name )
         self.prepareFighter()
