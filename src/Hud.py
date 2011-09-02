@@ -72,10 +72,10 @@ class PlayerHud(object):
 
 class Timer(object):
     
-    def __init__(self):
+    def __init__(self, callback = None):
         TIMER_SCALE = 0.14
         timerPos = [0.00, 0.85]
-        
+        self.callback = callback
         self.time = 0
         self.timeTag = OnscreenText(text = str(self.time),
                                     align = TextNode.ACenter,
@@ -83,11 +83,11 @@ class Timer(object):
                                     pos = timerPos
                                     )
         
-    def dec(self):
-        if self.time > 0:
-            self.time -= 1
-            self.timeTag["text"] = str(self.time)
-        
+    def start(self):
+        taskMgr.doMethodLater(1, self.timerTask, 'timerTask')  
+    
+    def stop(self):  
+        taskMgr.remove('timerTask')
         
     def setTime(self, seconds):
         self.time = seconds
@@ -96,13 +96,19 @@ class Timer(object):
     def getTime(self, seconds):
         return self.time
 
-
+    def timerTask(self,task): 
+        if self.time > 0:
+            self.time -= 1
+            self.timeTag["text"] = str(self.time)
+        else:
+            if self.callback:
+                self.callback()
+            return
+        return task.again 
 
 
 # only a test function
-def timerTask(timer, task): 
-    timer.dec()
-    return task.again 
+
 
 def test():
 
