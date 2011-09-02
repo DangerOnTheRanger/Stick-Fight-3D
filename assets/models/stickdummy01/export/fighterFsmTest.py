@@ -50,7 +50,18 @@ class inputHandler(DirectObject.DirectObject):
                #like used when defending, or walking , walking states transition via idle.
             if  (event[0] == eventnr and event[1] == self.keystatus) or  ( event[0]==-eventnr  )   :  
                 event[2][0].request(event[2][1])   
-           
+    
+    def pollEvents(self,eventsToTest=[1,2,3,4]):
+        eventsToTest=set(eventsToTest)        
+        
+        
+        for event in self.events:
+               ##set if the key goes down and the combo matches  OR     if the key goes up with no other combo specified.    
+               #like used when defending, or walking , walking states transition via idle.
+            if  (event[0] in eventsToTest& self.keystatus) and  ( len(event[1])==1  )   :  
+                event[2][0].request(event[2][1])
+        
+        
         
     def clearMapping(self):
         self.events = []
@@ -250,6 +261,8 @@ class FighterFSM(FSM):  #inherits from direct.fsm.FSM
         self.mapEvent( 5, "LPunch", [2])
         self.mapEvent( 6, "Kick" )  
         self.mapEvent( 7, "Defense" )
+        Func(self.inputHandler.pollEvents).start() #slightly hacky but we cant call that WITHIN the transition of entering idle. so it will be called next frame.
+        #doesnt look logic but saves craploads of uncool code, trust me
         print "entered idle"
         
     def exitIdle(self):
