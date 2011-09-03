@@ -1,23 +1,29 @@
 from direct.interval.MetaInterval import Sequence
 from direct.interval.FunctionInterval import Func,Wait
+from panda3d.core import BitMask32
 from hud import Timer
 from fighter import Fighter
+from matchcamera import MatchCamera
+
 class Match():
     def __init__(self, Character1, Character2, arena, keymapPlayer1, keymapPlayer2, roundTime=90, name1="Player1", name2="Player2"):
         ###character 1 and 2 are strings pointing to the assets with the character. will be delivered by the character-selection screen.
         ### till we have the selection screen, hardcode or default them.
 
-        self.arena = loader.loadModel('../assets/models/floortile/floortile')
+        self.arena = loader.loadModel(arena)
         self.arena.reparentTo(render)
         self.arena.setScale(4)
-        #TODO:loading arena, setting up arena floor collision bitmasks.
+        self.arena.find("**/ground").setCollideMask(BitMask32.bit(1))
+        self.arena.find("**/ground").hide()
+        self.arena.find("**/out").setCollideMask(BitMask32.bit(1))
+        self.arena.find("**/out").hide()
         
         self.player1 = Fighter(Character1, self.roundEnd, 0, keymapPlayer1, name=name1 )
         self.player2 = Fighter(Character2, self.roundEnd, 1, keymapPlayer2, name=name2 )
         
         self.player1.setOpponent(self.player2)
         self.player2.setOpponent(self.player1)
-        
+        self.matchCam =MatchCamera(self.player1.getNP(),self.player2.getNP(),base.camera )
         self.roundTime=roundTime
         self.timer = Timer(self.roundEnd)
         self.roundStart()

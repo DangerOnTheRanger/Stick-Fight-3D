@@ -142,10 +142,12 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
     def enterHit(self):
         self.clearMapping()
         self.fighter.play("hit")
+        self.fighterinstance.setSpeed(-1,0)
         self.transitionTimer= Sequence(Wait(self.fighter.getDuration()), Func(self.request,"Idle" ) )
         self.transitionTimer.start()
    
     def exitHit(self):
+        self.fighterinstance.setSpeed(0,0)
         self.clearMapping()
         self.transitionTimer = None
         self.activeInterval = None
@@ -211,7 +213,7 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
         attackMask = BitMask32()
         attackMask.setBit(2)
         self.activeTimer = Sequence( Wait(0.12),
-                                     Func(self.attack,attackMask,6,5 ) #attack, bitmasks, range, damage
+                                     Func(self.attack,attackMask,5,5 ) #attack, bitmasks, range, damage
                                    )
         self.activeTimer.start()
         
@@ -239,7 +241,7 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
         attackMask = BitMask32()
         attackMask.setBit(2)
         self.activeTimer = Sequence( Wait(0.12),
-                                     Func(self.attack,attackMask,6,5 ) #attack, bitmasks, range, damage
+                                     Func(self.attack,attackMask,5,5 ) #attack, bitmasks, range, damage
                                    )
         self.activeTimer.start()
         self.mapEvent(5,"RPunch")

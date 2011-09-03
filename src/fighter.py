@@ -1,4 +1,4 @@
-from panda3d.core import BitMask32
+from panda3d.core import BitMask32 ,  CollisionTraverser ,CollisionNode, CollisionRay , CollisionHandlerQueue
 from hud import PlayerHud
 from fighterFsm import FighterFsm
 from inputHandler import InputHandler
@@ -20,6 +20,16 @@ class Fighter():
             name = "player"+str(1+bool(side))
             
         self.fighterNP = render.attachNewNode(name)
+        self.collTrav = CollisionTraverser(name)
+        fromObject = self.fighterNP.attachNewNode(CollisionNode('colNode'+name))
+        fromObject.node().addSolid(CollisionRay(0, 0, 2,0,0, -1))
+        fromObject.node().setFromCollideMask(BitMask32.bit(1))
+        fromObject.node().setIntoCollideMask(BitMask32.allOff())
+        self.queue = CollisionHandlerQueue()
+        self.collTrav.addCollider(fromObject, self.queue)
+        
+        #fromObject.show() #more debug collision visuals
+        #self.collTrav.showCollisions(render) #debug visuals for collision
         
         self.inputHandler = InputHandler(keymap,self.side) #input handler remains in the Fighter, could aswell go in fighterfsm but i moved it away from there. at will.
         self.fsm = FighterFsm(name) 
@@ -101,6 +111,7 @@ class Fighter():
                 #actually make the match.py allow the other player to KO (in case of doubleKO,befor calling round end.
                 taskMgr.doMethodLater(0.5,self.callOnDeath,"RoundEnd") 
                 return 3
+            #TODO: requesting the same state as you are in doesnt work well.sorta need to re-enter the hit state
             self.fsm.forceTransition("Hit")
             return 2 #regular hit
     
@@ -108,7 +119,36 @@ class Fighter():
         self.speed = (x,y)
  
     def __playertask__(self,task):
-        self.fighterNP.setX(self.fighterNP,self.speed[1]*globalClock.getDt())
-        self.fighterNP.setY(self.fighterNP,self.speed[0]*globalClock.getDt()) 
+        
+        oldpos = self.fighterNP.getPos()
+        
+        dist = self.fighterNP.getY(self.opponent.getNP()) 
+
+        if dist > 3 or self.speed[0]<0: #prevert players from walking throug each other , too troublesome atm
+            self.fighterNP.setX(self.fighterNP,self.speed[1]*globalClock.getDt())
+            self.fighterNP.setY(self.fighterNP,self.speed[0]*globalClock.getDt())
+        else :
+            self.speed = ( min(2,self.speed[0] ), self.speed[1])
+            #also push back other player
+            self.opponent.getNP().setY(self.opponent.getNP(),-self.speed[0]*globalClock.getDt() )
+            
+        self.collTrav.traverse(render)
+        self.queue.sortEntries()
+        for i in range(self.queue.getNumEntries()):
+            entry = self.queue.getEntry(i)
+            if "ground" in entry.getIntoNodePath().getName() :
+                break
+            if "out" in entry.getIntoNodePath().getName() :
+                pass #ring out
+                self.fighterNP.setPos(oldpos) #for now reset him as we have no ring-out anim yet #TODO: add ring out anim!
+                break
+            
+        if self.queue.getNumEntries() == 0:
+            #if there is no ground and no ring out, propably a wall or no thin like that. just reset the pos     
+            self.fighterNP.setPos(oldpos)
+            print "resetting fighter"
+            
+                
+                
         return task.cont
 
