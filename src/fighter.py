@@ -99,7 +99,7 @@ class Fighter():
                 taskMgr.remove("player"+str(self.side))
                 self.fsm.forceTransition("Ko")
                 #actually make the match.py allow the other player to KO (in case of doubleKO,befor calling round end.
-                taskMgr.doMethodLater(0.2,self.callOnDeath,"RoundEnd") 
+                taskMgr.doMethodLater(0.5,self.callOnDeath,"RoundEnd") 
                 return 3
             self.fsm.forceTransition("Hit")
             return 2 #regular hit

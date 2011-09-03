@@ -38,7 +38,7 @@ class Match():
         self.timer.stop()
         #double ko would require a variable like roundOver.
         #short delay to allow double ko. 
-        if self.player1.getHealth()<0 and self.player2.getHealth() < 0:
+        if self.player1.getHealth()<=0 and self.player2.getHealth() <=0:
             #double knockout.
             self.player1.fighterWin()
             self.player2.fighterWin()
