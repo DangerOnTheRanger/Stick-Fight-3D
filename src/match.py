@@ -1,7 +1,7 @@
 from direct.interval.MetaInterval import Sequence
 from direct.interval.FunctionInterval import Func,Wait
 from panda3d.core import BitMask32
-from hud import Timer
+from hud import Timer, AnimatedText
 from fighter import Fighter
 from matchcamera import MatchCamera
 
@@ -26,6 +26,8 @@ class Match():
         self.matchCam =MatchCamera(self.player1.getNP(),self.player2.getNP(),base.camera )
         self.roundTime=roundTime
         self.timer = Timer(self.roundEnd)
+        self.messages = AnimatedText()
+        self.winner = AnimatedText(pos = (0.0,0.0))
         self.roundStart()
     
     def roundStart(self,task=None):
@@ -33,6 +35,7 @@ class Match():
         self.player2.prepareFighter()
         self.timer.setTime(self.roundTime)
         self.timer.start()
+        self.messages.splay("Fight!")
         self.roundEnded = False
                 
     def roundEnd(self,task=None):
@@ -48,21 +51,26 @@ class Match():
             #double knockout.
             self.player1.fighterWin()
             self.player2.fighterWin()
+            self.messages.splay("Double K.O.")
             
         elif self.player2.getHealth() > 0 > self.player1.getHealth():
             self.player2.fighterWin()
+            self.messages.splay("K.O.")
             #player2 wins by ko
             
         elif self.player2.getHealth() < 0 < self.player1.getHealth():
             self.player1.fighterWin()
+            self.messages.splay("K.O.")
             #player1 wins by ko
             
         elif self.player2.getHealth() > self.player1.getHealth() :
             self.player2.fighterWin() 
+            self.messages.splay("K.O.")
             #put both an a state where they cant attack each other!!
             
         elif self.player2.getHealth() < self.player1.getHealth() :   
             self.player1.fighterWin() 
+            self.messages.splay("K.O.")
             #put both an a state where they cant attack each other!!
              
         else:
@@ -76,14 +84,17 @@ class Match():
         print self.player1.getWins(),self.player2.getWins()
         if self.player1.getWins() >=3 and self.player2.getWins() >=3:
             #match ended in a draw
+            self.winner.splay("Draw!")
             self.endMatch()
             return
         elif self.player1.getWins() >=3:
             #player1 wins
+            self.winner.splay("Player 1 wins!")
             self.endMatch()
             return
         elif self.player2.getWins() >=3:
             #player2 wins
+            self.winner.splay("Player 2 wins!")
             self.endMatch()
             return
         else:

@@ -2,7 +2,8 @@ from direct.gui.DirectGui import *
 from direct.gui.OnscreenText import OnscreenText
 from panda3d.core import TextNode
 from direct.task import Task
-
+from direct.interval.LerpInterval import LerpFunc
+from direct.interval.IntervalGlobal import *
 
 PLAYER_1_SIDE, PLAYER_2_SIDE = range(2)
 
@@ -107,7 +108,47 @@ class Timer(object):
         return task.again 
 
 
+#class for displaying variety of temporary messages indicating ko's
+#end of rounds, combos etc. analogue using OnscreenImage 
+#can be easily created
+class AnimatedText(object):
+    
+    def __init__(self, text = "", pos = (0,0.3), time = 1.0):
+        self.text = OnscreenText(text, scale = 1.0, pos = pos)
+        self.text.hide()
+        self.seq = Sequence(
+            LerpFunc(self._easeIn, fromData=0, toData=1,
+             duration=0.5, blendType='noBlend'), 
+            Wait(time),
+            LerpFunc(self._easeOut, fromData=0, toData=1,
+             duration=0.5, blendType='noBlend'),
+             Func(self.text.hide)
+             )
+
+        
+    def play(self):
+        self.text.show()
+        self.seq.start()
+    
+    def _easeIn(self, t):
+        self.text["fg"]= (0.0, 0.0, 0.0, t)
+        self.text["scale"] = 1.0 - 0.8*t
+
+    def _easeOut(self, t):
+        t = 1-t
+        self.text["fg"]= (0.0, 0.0, 0.0, t)
+        self.text["scale"] = 1.0 - 0.8*t
+        
+    def setText(self, text):
+        self.text["text"] = text
+        
+    def splay(self, text):
+        self.text["text"] = text
+        self.play()
+    
+
 # only a test function
+
 
 
 def test():
@@ -121,8 +162,11 @@ def test():
     timer = Timer()
     timer.setTime(90)
     
+    at = AnimatedText("K.O.")
+    at.play()
+    
     # example of how Timer which is itself only a GUI element can be used from outside
-    taskMgr.doMethodLater(1, timerTask, 'timerTask', extraArgs = [timer], appendTask = True)  
+    #taskMgr.doMethodLater(1, timerTask, 'timerTask', extraArgs = [timer], appendTask = True)  
     
     run()
 
