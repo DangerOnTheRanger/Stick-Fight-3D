@@ -9,7 +9,7 @@ class Fighter():
         
         self.side = side
         self.wins = 0 #counting won rounds, a double-ko/draw counts as win for both.
-        
+        self.faceOpp = True  #looking at opponent
         self.callOnDeath = callOnDeath
         
         self.statusBitMask = BitMask32()
@@ -36,7 +36,8 @@ class Fighter():
         self.fsm.setup(self,self.inputHandler,self.side) 
         self.healthBar = PlayerHud(side, name )
         self.prepareFighter()
-    
+             
+        
     def prepareFighter(self):
         taskMgr.remove("player"+str(self.side))
         self.speed = (0,0)
@@ -117,7 +118,10 @@ class Fighter():
     
     def setSpeed(self,x,y):
         self.speed = (x,y)
- 
+    
+    def faceOpponent(self,facing):
+        self.faceOpp = facing #true if yuo look at the other player (usualy true unless attacking), so you can dodge an attack by evading.
+    
     def __playertask__(self,task):
         
         oldpos = self.fighterNP.getPos()
@@ -148,7 +152,8 @@ class Fighter():
             self.fighterNP.setPos(oldpos)
             print "resetting fighter"
             
-                
+        if self.faceOpp:
+            self.fighterNP.lookAt(self.opponent.getNP())      
                 
         return task.cont
 

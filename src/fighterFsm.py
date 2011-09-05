@@ -33,7 +33,8 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
                                           'run'         :path+'stickfigure-run'    ,
                                           'step'        :path+'stickfigure-step'   ,
                                           'ko'          :path+'stickfigure-ko'     ,
-                                          'round-kick'  :path+'stickfigure-round-kick'
+                                          'round-kick'  :path+'stickfigure-round-kick',
+                                          'side-step'   :path+'stickfigure-side-step'
 
                                         })
         #model was rotated the wrong way in blender.. darn fixing it
@@ -151,6 +152,40 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
         self.clearMapping()
         self.transitionTimer = None
         self.activeInterval = None
+    
+       #------------
+    def enterRStep(self):
+        self.fighter.loop("side-step")
+        self.fighter.setPlayRate(-1,"side-step")
+        self.mapEvent( 1, "LStep")
+        self.mapEvent(-2, "Idle")
+        self.mapEvent( 3, "Step")
+        self.mapEvent( 4, "Run")
+        self.mapEvent( 5, "RPunch" )
+        self.mapEvent( 5, "LPunch", [2])
+        self.mapEvent( 6, "Kick" )  
+        self.mapEvent( 7, "Defense" )
+        self.fighterinstance.setSpeed(0,4.17)
+    def exitRStep(self):
+        self.fighter.setPlayRate(1,"side-step")
+        self.fighter.stop()
+        self.fighterinstance.setSpeed(0,0)
+    
+    #------------
+    def enterLStep(self):
+        self.fighter.loop("side-step")
+        self.mapEvent(-1, "Idle")
+        self.mapEvent( 2, "RStep")
+        self.mapEvent( 3, "Step")
+        self.mapEvent( 4, "Run")
+        self.mapEvent( 5, "RPunch" )
+        self.mapEvent( 5, "LPunch", [2])
+        self.mapEvent( 6, "Kick" )  
+        self.mapEvent( 7, "Defense" )
+        self.fighterinstance.setSpeed(0,-4.17)
+    def exitLStep(self):
+        self.fighter.stop()
+        self.fighterinstance.setSpeed(0,0)
     #------------
     def enterIdle(self):
         #self.fighterinstance.setSpeed(0,0)
@@ -158,12 +193,15 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
         newBitMask.setRange(0,3)
         self.setSBM(newBitMask)
         self.fighter.loop("idle")
+        self.mapEvent( 1, "LStep")
+        self.mapEvent( 2, "RStep")
         self.mapEvent( 3, "Step")
         self.mapEvent( 4, "Run")
         self.mapEvent( 5, "RPunch" )
         self.mapEvent( 5, "LPunch", [2])
         self.mapEvent( 6, "Kick" )  
         self.mapEvent( 7, "Defense" )
+        
         Func(self.inputHandler.pollEvents).start() #slightly hacky but we cant call that WITHIN the transition of entering idle. so it will be called next frame.
         #doesnt look logic but saves craploads of uncool code, trust me
         
@@ -205,6 +243,7 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
     #example of a punch, wich default returns to idle, if no buttons are pressed. also blocks button presses/requests until short befor the end. 
     #at the end it is possible to transition to any legal state we defined earlier 
     def enterRPunch(self):
+        self.fighterinstance.faceOpponent(False)
         #self.fighterinstance.setSpeed(0,0) #just for illustration
         self.fighter.stop()
         self.fighter.play('rpunch')
@@ -224,6 +263,7 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
             return request
 
     def exitRPunch(self):
+        self.fighterinstance.faceOpponent(True)
         self.transitionTimer = None
         self.activeInterval = None
         self.clearMapping()
@@ -234,6 +274,7 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
    
     def enterLPunch(self):
         #self.fighterinstance.setSpeed(0,0) #just for illustration
+        self.fighterinstance.faceOpponent(False)
         self.fighter.stop()
         self.fighter.play('lpunch')
         self.transitionTimer= Sequence(Wait(self.fighter.getDuration()), Func(self.request,"Idle" ) )
@@ -251,6 +292,7 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
             return request
 
     def exitLPunch(self):
+        self.fighterinstance.faceOpponent(True)
         self.transitionTimer = None
         self.activeInterval = None
         self.clearMapping()
@@ -258,6 +300,7 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
     #--------------------------------    
         
     def enterKick(self):
+        self.fighterinstance.faceOpponent(False)
         self.fighter.stop()
         self.fighter.play('kick')
         self.transitionTimer= Sequence(Wait(self.fighter.getDuration()), Func(self.request,"Idle" ) )
@@ -273,7 +316,8 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
         if self.transitionTimer.getT() > self.transitionTimer.getDuration()-0.2 : 
             return request
 
-    def exitLPunch(self):
+    def exitKick(self):
+        self.fighterinstance.faceOpponent(True)
         self.transitionTimer = None
         self.activeInterval = None
         self.clearMapping()

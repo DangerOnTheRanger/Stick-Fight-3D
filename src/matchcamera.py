@@ -14,6 +14,7 @@ class MatchCamera():
         taskMgr.add(self.cameraTask,"cameraTask")
     
     def cameraTask(self,task):
+        self.pivot.lookAt(self.p1)
         oldpos = self.cam.getPos()
         self.pivot.setPos( (self.p1.getPos(render)+self.p2.getPos(render) )/2 )
         dist = self.pivot.getDistance(self.p1) / tan( (self.cam.getChild(0).node().getLens().getHfov()/1.4)*(3.14/360)  ) # pi is exactly 3! 
