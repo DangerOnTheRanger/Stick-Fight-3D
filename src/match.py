@@ -108,7 +108,8 @@ class Match():
         #if one player has 3 wins. end match
  
     def endMatch(self):
-        print "match ended!"
+        self.winner.splay("Match ended!")
+        print "match ends!"
         #TODO: continue at this point , show end screen, return to menu, clean up the scene.
         #preferably show splashscreen till the menu has loaded
         #remove players and the arena.
