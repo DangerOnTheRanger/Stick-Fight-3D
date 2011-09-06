@@ -1,4 +1,4 @@
-from panda3d.core import BitMask32 ,  CollisionTraverser ,CollisionNode, CollisionRay , CollisionHandlerQueue
+from panda3d.core import BitMask32 ,  CollisionTraverser ,CollisionNode, CollisionRay , CollisionHandlerQueue , Vec3
 from hud import PlayerHud
 from fighterFsm import FighterFsm
 from inputHandler import InputHandler
@@ -78,20 +78,33 @@ class Fighter():
         self.opponent = opponent
         self.fighterNP.lookAt(self.opponent.getNP())
    
-    def attack(self,attackBitMask,attackrange,damageHit,damageDodge=0): #those variables will be supplied by the fsm states later on. 
+    def attack(self,attackBitMask,attackrange,damageHit,damageDodge=0,angle=30): #those variables will be supplied by the fsm states later on. 
                                                              #function is pretty redundant... for structure only, and for early days
-        attackstatus = self.opponent.getAttacked(attackBitMask,attackrange,damageHit,damageDodge)
+        attackstatus = self.opponent.getAttacked(attackBitMask,attackrange,damageHit,damageDodge,angle)
         return attackstatus
+    
+    def testHit(self,node1,node2,threshold=30, dist = 1):  #node1 which looks for a target , node2 is the target , threshold is the max-attack-angle, dist the dist
+          dirVec = node1.getRelativePoint(node2,Vec3(0,0,0))
+          dirVec = Vec3(dirVec[0],dirVec[1],dirVec[2])
+          
+          dirVec.normalize()
+          angle = dirVec.angleDeg(Vec3(0,1,0))
+          if angle < threshold and dist > node1.getDistance(node2):
+            #print "hit at "+str(angle)+" degree!"
+            return True
+          else:
+            #print angle,node1.getDistance(node2)
+            return False
         
-    def getAttacked(self,attackBitMask,attackrange,damageHit,damageDodge=0):
+    def getAttacked(self,attackBitMask,attackrange,damageHit,damageDodge=0,angle = 30):
         """
         returns 0 if not hit, 1 if hit was blocked, 2 if hit, 3 for hit+KO 
         """
         if self.health <=0:
             return 4 #player is ko already
             
-        dist = self.fighterNP.getY(self.opponent.getNP()) 
-        if  dist > attackrange or dist < 0   : #instead of 0, a sligtly positive values makes thinks look better.
+
+        if  not self.testHit(self.opponent.getNP(),self.fighterNP  ,angle,attackrange )  : #instead of 0, a sligtly positive values makes thinks look better.
             #attack misses due to out of range.
             return 0 
 
