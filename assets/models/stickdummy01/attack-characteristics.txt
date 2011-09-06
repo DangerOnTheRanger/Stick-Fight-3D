@@ -8,5 +8,5 @@ name:region:delay(frames):fps:delay(seconds)
 kick:1:4:25:0.16
 l_punch:2:3:25:0.12
 r_punch:2:3:25:0.12
-round-kick:1:25:25:1
+round-kick:1:15:25:0.6
 
