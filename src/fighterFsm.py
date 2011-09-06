@@ -165,7 +165,7 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
         self.mapEvent( 5, "LPunch", [2])
         self.mapEvent( 6, "Kick" )  
         self.mapEvent( 7, "Defense" )
-        self.fighterinstance.setSpeed(0,4.17)
+        self.fighterinstance.setSpeed(0,-4.41)
     def exitRStep(self):
         self.fighter.setPlayRate(1,"side-step")
         self.fighter.stop()
@@ -182,7 +182,7 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
         self.mapEvent( 5, "LPunch", [2])
         self.mapEvent( 6, "Kick" )  
         self.mapEvent( 7, "Defense" )
-        self.fighterinstance.setSpeed(0,-4.17)
+        self.fighterinstance.setSpeed(0,4.41)
     def exitLStep(self):
         self.fighter.stop()
         self.fighterinstance.setSpeed(0,0)
