@@ -9,4 +9,4 @@ kick:1:4:25:0.16
 l_punch:2:3:25:0.12
 r_punch:2:3:25:0.12
 round-kick:1:15:25:0.6
-
+crouch-punch:1:3:25:0.12
