@@ -5,7 +5,7 @@ basic motion:
     forth, back (left,right), sidewards (both directions, evasion steps, dupple-up/down), crouch (down), jump(up) , jumping forth ,jumping back* (up+direction) 
 
 basic attacks:
-    regular kick, lower kick* (when crouching)
+    regular kick, lower kick (when crouching)
     regular punch, lower punch (when crouching)
     
 basic blocks:
