@@ -8,15 +8,19 @@ from direct.interval.LerpInterval import LerpFunc
 from direct.interval.IntervalGlobal import *
 
 class Portrait(object):
-    def __init__(self, img, left, right, bottom, top):
+    def __init__(self, img, left = 0, right = 0.2, bottom = 0.0, top = 0.2):
+        self.left, self.right, self.bottom, self.top = left, right, bottom, top
+        # setting up a portrait
         self.generator = CardMaker("Portrait") 
         self.generator.setFrame(left, right, bottom, top) 
         texture = loader.loadTexture(img) 
-        self.geom = render2d.attachNewNode(self.generator.generate()) 
+        self.geom = aspect2d.attachNewNode(self.generator.generate()) 
         self.geom.setTexture(texture)
         self.lightDown()
+        # retrieving information from filename
         self.name = img.split(".")[0].split("_")[1]
         self.num = img.split("_")[0].split(sep)[1]
+        # used for selection
         self.t = 0.0
 
     def setPos(self, x, y):
@@ -28,114 +32,146 @@ class Portrait(object):
     def lightDown(self):
         self.geom.setColorScale(Vec4(0.5,0.5,0.5,1))   
 
-    
     def selectionTask(self, task):
         self.t += task.delayTime
-        self.t %= 100
         t = 0.5*cos(pi*self.t) + 1
         self.geom.setColorScale(Vec4(t,t,t,1))
         return task.again
-    
-    def _select(self):
-        taskMgr.doMethodLater(0.05, self.selectionTask, 'selectionTask' + self.name)
     
     def unselect(self):
         taskMgr.remove('selectionTask'+ self.name)
         self.lightDown()
     
     def select(self):
-        self._select()
+        taskMgr.doMethodLater(0.03, self.selectionTask, 'selectionTask' + self.name)
+
+class VersusArea(object):
+    def __init__(self):
+        left, right = -1.0, 1.0
+        bottom, top = 0.0, 1.4 
+        gap, subtitle = 0.2, 0.2
+        width = ((right - left) - gap) / 2
+        height = ((top - bottom) - subtitle) / 2
+        size = 0.5*max(width, height)
+        
+        self.images = [Portrait("characters/01_panda.png", -size , size, -size , size), 
+                        Portrait("characters/01_panda.png", -size , size, -size , size)]
+        self.images[0].setPos(-(gap + 0.5*width), bottom + 0.5*height + subtitle)
+        self.images[1].setPos(gap + 0.5*width, bottom  + 0.5*height + subtitle)
+        
+        self.vs = OnscreenText(text = "vs", pos = (0.0, (top - bottom)/2- height + subtitle))
+        
+        self.subs = [OnscreenText(text = "Player 1", pos = (-(gap + 0.5*width), bottom - 0.5*subtitle)), 
+                        OnscreenText(text = "Player 2", pos = (gap + 0.5*width, bottom - 0.5*subtitle))]
+        
+    def setPlayerImage(self, num, image):
+        self.images[num].geom.setTexture(image)
+    
+    def setPlayerSub(self, num, text):
+        self.subs[num]["text"] = text
+
 
 
 class PortraitArray(object):
-    def __init__(self):
-        self.area = [-0.9,0.9, -0.9,-0.6]
-        self.rows = 2
-        self.cols = 8
+    def __init__(self, catalog, slots, rows):
+        left, right = -1.0, 1.0
+        bottom, top = -1.2, -0.5
         
-        self.extents = [(self.area[1]-self.area[0])/self.cols, (self.area[3]-self.area[2])/self.rows]
-        self.portraits = {}
-        files = listdir("characters")
-        files.sort()
+        filenames = listdir(catalog)
+        filenames.sort()
+        while len(filenames) > slots:
+            filenames.pop()
         
-        f = 0
+        self.portraits = [[] for i in range(rows)]
+        for i in range(len(self.portraits)):
+            self.portraits[i] = [None for j in range(slots/rows)]
         
+        for i in range(slots % rows):
+            self.portraits[i].append(None)
         
+        height = (bottom - top)/ len(self.portraits)
+        width = (right - left)/len(self.portraits[0])
+        size = 0.95*min(width,abs(height))
         
-        for ypos in [1,0]:
-            for xpos in range(self.cols):
-                p = Portrait("characters" + sep + files[f],
-                                        -0.5*self.extents[0]*0.9,
-                                        0.5*self.extents[0]*0.9, 
-                                        -0.5*self.extents[1]*0.9, 
-                                        0.5*self.extents[1]*0.9)
-                                        
-                self.portraits[int(p.num)] = p
-                self.portraits[int(p.num)].setPos(self.area[0] + (xpos+0.5) * self.extents[0], 
-                self.area[2] + (ypos+0.5) * self.extents[1])
-                f += 1
-        
-        self.players = [0, 0]
-        self.current = 0
-        self.text = [OnscreenText(text = "", pos = (-0.8,-0.5)), OnscreenText(text = "", pos = (0.8,-0.5))]  
-        self.big_image = [Portrait("characters/01_panda.png", -0.3, 0.3, -0.6, 0.6), Portrait("characters/01_panda.png", -0.3, 0.3, -0.6, 0.6)]  
-        self.big_image[0].setPos(-0.6,0.3)
-        self.big_image[0].lightUp()
-        self.big_image[1].setPos(0.6,0.3)
-        self.big_image[1].lightUp()
-            
-        self.vs = OnscreenText(text = "VS", pos = (0,0))
-        
-        self.select(1)
-        
-                
-    def clear(self):
-        for key in self.portraits.keys():
-            if key not in self.players:
-                self.portraits[key].unselect()    
-    
-                
-    def select(self, num):
-        self.portraits[num].select()
-        self.players[self.current] = num
-        self.clear()
-        self.text[self.current]["text"] = self.portraits[self.players[self.current]].name
-        self.big_image[self.current].geom.setTexture(self.portraits[num].geom.getTexture())
-        
-        
-    def left(self):
-        if self.players[self.current] in range(2,17):
-            self.select(self.players[self.current] - 1)
-    
-    def right(self):
-        if self.players[self.current] in range(1,16):
-            self.select(self.players[self.current] + 1)
-            
-    def up(self):
-        if self.players[self.current] in range(9,17):
-            self.select(self.players[self.current] - self.cols)
-    
-    def down(self):
-        if self.players[self.current] in range(1,9):
-            self.select(self.players[self.current] + self.cols)
+        k = 0
+        for i in range(len(self.portraits)):
+            for j in range(len(self.portraits[i])):
+                self.portraits[i][j] = Portrait(catalog + sep + filenames[k], 0 , size, 0, size)
+                self.portraits[i][j].setPos(left + j*width, top + i*height)
+                k += 1
 
-    def selected(self):
-        if self.current == 0:
-            self.current = 1
-            self.players[1] = self.players[0]
-        else:
-            print "already selected"
+        temp = []
         
+        self.vs = VersusArea()
+        
+        self.players = [[0,0],[0,0]]
+        
+        
+        
+        
+    def clear(self):
+        for i in range(len(self.portraits)):
+            for j in range(len(self.portraits[i])):
+                pass
+                
+    def select(self, player, x, y):
+        self.players[player] = [x,y]
+        self.portraits[x][y].select()
+        self.clear()
+        self.vs.setPlayerImage(player,self.portraits[x][y].geom.getTexture())
+        self.vs.setPlayerSub(player,self.portraits[x][y].name)
+    
+    def unselect(self, player, x, y):
+        if self.players[0] != self.players[1]:
+            self.portraits[x][y].unselect()
+        
+        
+    def left(self, player):
+        x = self.players[player][0]
+        y = self.players[player][1]
+        if y > 0:
+            self.unselect(player, x,y)
+            self.select(player, x,y-1)
+    
+    def right(self, player):
+        x = self.players[player][0]
+        y = self.players[player][1]
+        if y < len(self.portraits[x]) - 1:
+            self.unselect(player, x,y)
+            self.select(player, x,y+1)
+            
+    def up(self, player):
+        x = self.players[player][0]
+        y = self.players[player][1]
+        if x > 0:
+            self.unselect(player, x,y)
+            self.select(player, x-1,y)
+    
+    def down(self, player):
+        x = self.players[player][0]
+        y = self.players[player][1]
+        if (x < len(self.portraits) - 1):
+            if y == len(self.portraits[x])-1 and len(self.portraits[x]) > len(self.portraits[x + 1]):
+                pass
+            else:
+                self.unselect(player, x,y)
+                self.select(player, x+1,y)
+
 
 if __name__ == "__main__":
     import direct.directbase.DirectStart 
  
-    pa = PortraitArray()
-    base.accept('arrow_up', pa.up)
-    base.accept('arrow_down', pa.down)
-    base.accept('arrow_left', pa.left)
-    base.accept('arrow_right', pa.right)
-    base.accept('enter', pa.selected)
+    pa = PortraitArray("characters", 16, 2)
+    base.accept('arrow_up', pa.up,[0])
+    base.accept('arrow_down', pa.down,[0])
+    base.accept('arrow_left', pa.left,[0])
+    base.accept('arrow_right', pa.right,[0])
+
+    base.accept('w', pa.up,[1])
+    base.accept('s', pa.down,[1])
+    base.accept('a', pa.left,[1])
+    base.accept('d', pa.right,[1])
+
 
     run()
     
