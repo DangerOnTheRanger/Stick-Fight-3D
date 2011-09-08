@@ -2,7 +2,7 @@
 #these animations will be the (future) minimum to get a character into the game and working.
 #preliminary final for now... subject to change , a tiny bit. but work propably wont be wasted.
 basic motion:
-    forth, back (left,right), sidewards (both directions, evasion steps, dupple-up/down), crouch (down), jump(up) , jumping forth ,jumping back* (up+direction) 
+    forth, back (left,right), sidewards (both directions, evasion steps, dupple-up/down), crouch (down), jump(up) , jumping forth ,jumping back (up+direction) 
 
 basic attacks:
     regular kick, lower kick (when crouching)
@@ -23,5 +23,3 @@ advanced motion:
     
 advanced attacks:
     over-head, floor only
-
-* indicates that animation is not yet done
