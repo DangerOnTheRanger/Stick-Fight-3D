@@ -18,24 +18,32 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
                     ## i am not sure where to put the fighter actor. logically it belongs to the fighter class, but the fsm does a lot more with it.
                     ## guess it will end up in the fsm as this is the file created for each fighter individually.
                     ## or if we should inherit Fighter from FSM and simply stuff everything in there wich would be bad cause we copy all shared code around
-   
+                    #bitmasks are 0 for on the floor, 1 for legs, 2 for torso&head , 
+                    #3 for vertical down (like hammer smackdown, bodyslam form the back of a horse, meteroids...)
         
     def setup(self,FighterClassInstance,side):
         self.inputHandler = InputHandler(self,side)
         path = "../assets/models/stickdummy01/export/"
         self.fighter = Actor(path+'stickfigure', 
-                                        {
-                                          'rpunch'      :path+'stickfigure-r_punch',
-                                          'lpunch'      :path+'stickfigure-l_punch',
+                                        { 
+                                          'idle'        :path+'stickfigure-idle'   ,
+                                          'jump'        :path+'stickfigure-jump', 
+                                          'crouch'      :path+'stickfigure-crouch-idle',                                      
+                                          'runIn'       :path+'stickfigure-run'    ,
+                                          'runOut'      :path+'stickfigure-step'   ,
+                                          'punch'       :path+'stickfigure-r_punch',
                                           'hit'         :path+'stickfigure-hit'    ,
                                           'defense'     :path+'stickfigure-defense',
-                                          'idle'        :path+'stickfigure-idle'   ,
                                           'kick'        :path+'stickfigure-kick'   ,
-                                          'run'         :path+'stickfigure-run'    ,
-                                          'step'        :path+'stickfigure-step'   ,
                                           'ko'          :path+'stickfigure-ko'     ,
-                                          'round-kick'  :path+'stickfigure-round-kick',
-                                          'side-step'   :path+'stickfigure-side-step'
+                                          'crouch-punch':path+'stickfigure-crouch-punch',       
+                                          'crouch-kick' :path+'stickfigure-crouch-kick', 
+                                          'crouch-defense':path+'stickfigure-crouch-defense', 
+                                          'crouch-hit'  :path+'stickfigure-crouch-hit', 
+                                          'jump-in'     :path+'stickfigure-jump-forward', 
+                                          'jump-out'     :path+'stickfigure-jump-backward', 
+                                          #'round-kick'  :path+'stickfigure-round-kick',
+                                          #'side-step'   :path+'stickfigure-side-step'
 
                                         })
         #model was rotated the wrong way in blender.. darn fixing it
@@ -46,7 +54,7 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
         
         self.fighterinstance = FighterClassInstance
         self.fighter.reparentTo(self.fighterinstance.getNP())
-        self.activeInterval = None #we will store our active sequence,parallel or interval here, so we can easily clean it up 
+        self.activeTimer = None #we will store our active sequence,parallel or interval here, so we can easily clean it up 
         self.transitionTimer = None #usually holds a sequence like sequence(Wait(time),self.request('nextstate'))
         
         #loading sounds... could go in an extra-file
@@ -54,17 +62,6 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
                                  
         self.request("Idle")
     
-    def mapEvent(self,eventNr,event,activeevents=[]):
-        """
-        convenience function
-        """
-        self.inputHandler.mapEvent(self,eventNr,event,activeevents)
-        
-    def clearMapping(self):
-        """
-        another convenience function
-        """
-        self.inputHandler.clearMapping()
    
     def setSBM(self,bitmask):
         """
@@ -97,16 +94,34 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
             #the other player is ko already..    
             #we still miss the hit
             self.sounds.playMiss()
-
+    #----------
+    def stand(self):
+        newBitMask = BitMask32()
+        newBitMask.setRange(0,3)
+        self.setSBM(newBitMask)
+    #-----------
+    def crouch(self):
+        newBitMask = BitMask32()
+        newBitMask.setRange(0,1)
+        newBitMask.setBit(3)
+        self.setSBM(newBitMask)
+        
+    #-----------
+    def cancelTransition(self,task=0):
+        if self.transitionTimer:
+            self.transitionTimer.pause()
+            self.transitionTimer
+    #-----------
     def cancelActive(self,task=0):
-        if self.activeInterval:
-            self.activeInterval.remove()
-            self.activeInterval = None
-            
+        if self.activeTimer:
+            self.activeTimer.pause()
+            self.activeTimer = None
+    
     #----------
     def enterKo(self):
         taskMgr.doMethodLater(0.2,self.cancelActive,"cancelActive") #timer to allow double-KO
-        self.clearMapping()
+        newBitMask = BitMask32()
+        self.setSBM(newBitMask)
         self.fighter.play("ko")
     def filterKo(self,request,args):
         #this blocks the fsm. but will be forced to idle by the fighter class
@@ -116,113 +131,283 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
           
     #-----------
     def enterHit(self):
-        self.clearMapping()
+        self.stand()
         self.fighter.play("hit")
         self.fighterinstance.setSpeed(-1,0)
-        self.transitionTimer= Sequence(Wait(self.fighter.getDuration()), Func(self.request,"Idle" ) )
+        self.transitionTimer= Sequence(Wait(self.fighter.getDuration()), Func(self.inputHandler.pollEvents ) )
         self.transitionTimer.start()
+    
+    def filterHit(self,request,options):
+        if self.transitionTimer.getT() > self.transitionTimer.getDuration()-0.1 :  #allow player to hit the next strike back
+            return request
    
     def exitHit(self):
         self.fighterinstance.setSpeed(0,0)
-        self.clearMapping()
-        self.transitionTimer = None
-        self.activeInterval = None
+        self.cancelTransition()
+        self.cancelActive()
+        
+    #-------------------------
+
+    def enterCrouchHit(self):
+        self.crouch()
+        self.fighter.play("crouch-hit")
+        self.fighterinstance.setSpeed(-1,0)
+        self.transitionTimer= Sequence(Wait(self.fighter.getDuration()), Func(self.inputHandler.pollEvents ) )
+        self.transitionTimer.start()
     
-       #------------
-    def enterRStep(self):
-        self.fighter.loop("side-step")
-        self.fighter.setPlayRate(-1,"side-step")
-        self.mapEvent( 1, "LStep")
-        self.mapEvent(-2, "Idle")
-        self.mapEvent( 3, "Step")
-        self.mapEvent( 4, "Run")
-        self.mapEvent( 5, "RPunch" )
-        self.mapEvent( 5, "LPunch", [2])
-        self.mapEvent( 6, "Kick" )  
-        self.mapEvent( 7, "Defense" )
-        self.fighterinstance.setSpeed(0,-4.41)
-    def exitRStep(self):
-        self.fighter.setPlayRate(1,"side-step")
-        self.fighter.stop()
+    def filterCrouchHit(self,request,options):
+        if self.transitionTimer.getT() > self.transitionTimer.getDuration()-0.1 :  #allow player to hit the next strike back
+            return request
+   
+    def exitCrouchHit(self):
         self.fighterinstance.setSpeed(0,0)
+        self.cancelTransition()
+        self.cancelActive() 
+
+    #---------
     
-    #------------
-    def enterLStep(self):
-        self.fighter.loop("side-step")
-        self.mapEvent(-1, "Idle")
-        self.mapEvent( 2, "RStep")
-        self.mapEvent( 3, "Step")
-        self.mapEvent( 4, "Run")
-        self.mapEvent( 5, "RPunch" )
-        self.mapEvent( 5, "LPunch", [2])
-        self.mapEvent( 6, "Kick" )  
-        self.mapEvent( 7, "Defense" )
-        self.fighterinstance.setSpeed(0,4.41)
-    def exitLStep(self):
+    def enterDefense(self):
+        self.stand()
+        newBitMask = BitMask32()
+        #newBitMask.setBit(1)
+        newBitMask.setBit(2)
+        self.setDBM(newBitMask)
         self.fighter.stop()
+        self.fighter.loop('defense')
+
+    def filterDefense(self,request,options):
+        if request != "Defense":
+            return request
+
+    def exitDefense(self):
+        newBitMask = BitMask32()
+        self.setDBM(newBitMask)
+        self.cancelTransition()
+        self.cancelActive()
+
+    #---------
+
+    def enterRunIn(self):
+        self.stand()
+        self.fighter.loop("runIn")
+        self.fighterinstance.setSpeed(20.23 ,0)
+        
+    def filterRunIn(self,request,options):
+        if request != "RunIn":
+            return request
+
+    def exitRunIn(self):
+        self.fighter.stop()
+        self.fighterinstance.setSpeed(0 ,0)
+    
+    #---------------------
+     
+    def enterRunOut(self):
+        self.stand()
+        self.fighter.loop("runOut")
+        self.fighterinstance.setSpeed(-4.41 ,0)
+        
+    def filterRunOut(self,request,options):
+        if request != "RunOut":
+            return request
+
+    def exitRunOut(self):
+        self.fighter.stop()
+        self.fighterinstance.setSpeed(0 ,0)
+    
+    
+        #---------------------
+    def enterJumpIn(self):
+        self.fighterinstance.faceOpponent(False)
+        self.fighter.stop()
+        self.fighter.play('jump-in')
+        self.fighterinstance.setSpeed(7.92,0)
+        #TODO:add a parallele here, modifying the bitmasks during jump
+        #till then. jump all the time
+        newBitMask = BitMask32()
+        newBitMask.setRange(2,3)
+        self.setSBM(newBitMask)
+        
+        self.transitionTimer= Sequence(Wait(self.fighter.getDuration()), Func(self.inputHandler.pollEvents ) )
+        self.transitionTimer.start()
+
+    def filterJumpIn(self,request,args):
+        if self.transitionTimer.getT() > self.transitionTimer.getDuration()-0.1 :  #allow player to hit the next strike 0.2 to 0 seconds befor the animation finished
+            return request
+
+    def exitJumpIn(self):
+        self.stand()
         self.fighterinstance.setSpeed(0,0)
+        self.fighterinstance.faceOpponent(True)
+        self.cancelTransition()
+        
+     
+        #---------------------
+    def enterJumpOut(self):
+        self.fighterinstance.faceOpponent(False)
+        self.fighter.stop()
+        self.fighter.play('jump-out')
+        self.fighterinstance.setSpeed(-7.92,0)
+        #TODO:add a parallele here, modifying the bitmasks during jump
+        #till then. jump all the time
+        newBitMask = BitMask32()
+        newBitMask.setRange(2,3)
+        self.setSBM(newBitMask)
+        
+        self.transitionTimer= Sequence(Wait(self.fighter.getDuration()), Func(self.inputHandler.pollEvents ) )
+        self.transitionTimer.start()
+
+    def filterJumpOut(self,request,args):
+        if self.transitionTimer.getT() > self.transitionTimer.getDuration()-0.1 :  #allow player to hit the next strike 0.2 to 0 seconds befor the animation finished
+            return request
+
+    def exitJumpOut(self):
+        self.stand()
+        self.fighterinstance.setSpeed(0,0)
+        self.fighterinstance.faceOpponent(True)
+        self.cancelTransition()   
+        
+    #---------------------
+    def enterJump(self):
+        self.fighterinstance.faceOpponent(False)
+        self.fighter.stop()
+        self.fighter.play('jump')
+        #TODO:add a parallele here, modifying the bitmasks during jump
+        #till then. jump all the time
+        newBitMask = BitMask32()
+        newBitMask.setRange(2,3)
+        #newBitMask.setBit(3)
+        self.setSBM(newBitMask)
+        
+        self.transitionTimer= Sequence(Wait(self.fighter.getDuration()), Func(self.inputHandler.pollEvents ) )
+        self.transitionTimer.start()
+
+    def filterJump(self,request,args):
+        if self.transitionTimer.getT() > self.transitionTimer.getDuration()-0.1 :  #allow player to hit the next strike 0.2 to 0 seconds befor the animation finished
+            return request
+
+    def exitJump(self):
+        self.stand()
+        self.fighterinstance.faceOpponent(True)
+        self.cancelTransition()
+
     #------------
+    
     def enterIdle(self):
         #self.fighterinstance.setSpeed(0,0)
-        newBitMask = BitMask32()
-        newBitMask.setRange(0,3)
-        self.setSBM(newBitMask)
+        self.stand()
         self.fighter.loop("idle")
-        self.mapEvent( 1, "LStep")
-        self.mapEvent( 2, "RStep")
-        self.mapEvent( 3, "Step")
-        self.mapEvent( 4, "Run")
-        self.mapEvent( 5, "RPunch" )
-        self.mapEvent( 5, "LPunch", [2])
-        self.mapEvent( 6, "Kick" )  
-        self.mapEvent( 7, "Defense" )
-        
         Func(self.inputHandler.pollEvents).start() #slightly hacky but we cant call that WITHIN the transition of entering idle. so it will be called next frame.
         #doesnt look logic but saves craploads of uncool code, trust me
+    
+    def filterIdle(self,request,options):
+        if request != "Idle":
+            return request
         
     def exitIdle(self):
         #self.fighterinstance.setSpeed(0,0) #cant hurt
-        self.transitionTimer = None
-        self.activeInterval = None
-        self.clearMapping()
+        self.cancelTransition()
+        self.cancelActive()
+        
+        
+    #------------
     
+    def enterCrouch(self):
+        self.crouch()
+        #self.fighterinstance.setSpeed(0,0)
+        self.fighter.loop("crouch")
+        #Func(self.inputHandler.pollEvents).start() #slightly hacky but we cant call that WITHIN the transition of entering idle. so it will be called next frame.
+        #doesnt look logic but saves craploads of uncool code, trust me
     
-     #-------------------------
-    def enterStep(self):
-        self.fighter.loop("step")
-        self.fighter.setPlayRate(-1,"step")
-        self.fighterinstance.setSpeed(-4.69 ,0)
-        self.mapEvent(-3, "Idle")
-        self.mapEvent( 5, "RPunch",[3]) #we would not hit unless we add the key. might need a fix^^
-        self.mapEvent( 6, "Kick"  ,[3] )  
+    def filterCrouch(self,request,options):
+        if request != "Crouch":
+            return request
+        
+    def exitCrouch(self):
+        #self.fighterinstance.setSpeed(0,0) #cant hurt
+        pass
     
-    def exitStep(self):
-        self.fighter.stop()
-        self.fighterinstance.setSpeed(0 ,0)
-        self.clearMapping()
+     #---------------
     
-    #-------------------------
-    def enterRun(self):
-        self.fighter.loop("run")
-        self.fighterinstance.setSpeed(20.23 ,0)
-        self.mapEvent(-4, "Idle")
-        self.mapEvent( 5, "RPunch",[4]) #we would not hit unless we add the key. might need a fix^^
-        self.mapEvent( 6, "Kick"  ,[4] )  
-    
-    def exitRun(self):
-        self.fighter.stop()
-        self.fighterinstance.setSpeed(0 ,0)
-        self.clearMapping()
-    
-    #-------------------------
-    #example of a punch, wich default returns to idle, if no buttons are pressed. also blocks button presses/requests until short befor the end. 
-    #at the end it is possible to transition to any legal state we defined earlier 
-    def enterRPunch(self):
+    def enterCrouchPunch(self):
+        self.crouch()
         self.fighterinstance.faceOpponent(False)
-        #self.fighterinstance.setSpeed(0,0) #just for illustration
         self.fighter.stop()
-        self.fighter.play('rpunch')
-        self.transitionTimer= Sequence(Wait(self.fighter.getDuration()), Func(self.request,"Idle" ) )
+        self.fighter.play('crouch-punch')
+        self.transitionTimer= Sequence(Wait(self.fighter.getDuration()), Func(self.inputHandler.pollEvents ) )
+        self.transitionTimer.start() 
+        attackMask = BitMask32()
+        attackMask.setBit(1)
+        self.activeTimer = Sequence( Wait(0.12),
+                                     Func(self.attack,attackMask,5,5 ) #attack, bitmasks, range, damage
+                                   )
+        self.activeTimer.start()
+
+
+    def filterCrouchPunch(self,request,args):
+        if self.transitionTimer.getT() > self.transitionTimer.getDuration()-0.2 :  #allow player to hit the next strike 0.2 to 0 seconds befor the animation finished
+            return request
+
+    def exitCrouchPunch(self):
+        self.fighterinstance.faceOpponent(True)
+        self.cancelTransition()
+        self.cancelActive()
+    #---------------
+    
+    def enterCrouchKick(self):
+        self.crouch()
+        self.fighterinstance.faceOpponent(False)
+        self.fighter.stop()
+        self.fighter.play('crouch-kick')
+        self.transitionTimer= Sequence(Wait(self.fighter.getDuration()), Func(self.inputHandler.pollEvents ) )
+        self.transitionTimer.start() 
+        attackMask = BitMask32()
+        attackMask.setBit(1)
+        self.activeTimer = Sequence( Wait(0.12),
+                                     Func(self.attack,attackMask,6.5,5 ) #attack bitmask, range, damage
+                                   )
+        self.activeTimer.start()
+
+
+    def filterCrouchKick(self,request,args):
+        if self.transitionTimer.getT() > self.transitionTimer.getDuration()-0.2 :  #allow player to hit the next strike 0.2 to 0 seconds befor the animation finished
+            return request
+
+    def exitCrouchKick(self):
+        self.fighterinstance.faceOpponent(True)
+        self.cancelTransition()
+        self.cancelActive()
+ #-------------------------
+     
+
+
+    def enterCrouchDefense(self):
+        self.crouch()
+        newBitMask = BitMask32()
+        newBitMask.setBit(1)
+        #newBitMask.setBit(2)
+        self.setDBM(newBitMask)
+        self.fighter.stop()
+        self.fighter.loop('crouch-defense')
+
+    def filterCrouchDefense(self,request,options):
+        if request != "CrouchDefense":
+            return request
+
+    def exitCrouchDefense(self):
+        newBitMask = BitMask32()
+        self.setDBM(newBitMask)
+        self.cancelTransition()
+        self.cancelActive()
+
+    #---------------
+    
+    def enterPunch(self):
+        self.stand()
+        self.fighterinstance.faceOpponent(False)
+        self.fighter.stop()
+        self.fighter.play('punch')
+        self.transitionTimer= Sequence(Wait(self.fighter.getDuration()), Func(self.inputHandler.pollEvents ) )
         self.transitionTimer.start() 
         attackMask = BitMask32()
         attackMask.setBit(2)
@@ -230,51 +415,20 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
                                      Func(self.attack,attackMask,5,5 ) #attack, bitmasks, range, damage
                                    )
         self.activeTimer.start()
-        
-        self.mapEvent(5,"LPunch") #allows us to combo a punch followed by a kick.
 
-    def filterRPunch(self,request,args):
+
+    def filterPunch(self,request,args):
         if self.transitionTimer.getT() > self.transitionTimer.getDuration()-0.2 :  #allow player to hit the next strike 0.2 to 0 seconds befor the animation finished
             return request
 
-    def exitRPunch(self):
+    def exitPunch(self):
         self.fighterinstance.faceOpponent(True)
-        self.transitionTimer = None
-        self.activeInterval = None
-        self.clearMapping()
-        pass
-        
+        self.cancelTransition()
+        self.cancelActive()
 
-    #---------------------------
-   
-    def enterLPunch(self):
-        #self.fighterinstance.setSpeed(0,0) #just for illustration
-        self.fighterinstance.faceOpponent(False)
-        self.fighter.stop()
-        self.fighter.play('lpunch')
-        self.transitionTimer= Sequence(Wait(self.fighter.getDuration()), Func(self.request,"Idle" ) )
-        self.transitionTimer.start()
-        attackMask = BitMask32()
-        attackMask.setBit(2)
-        self.activeTimer = Sequence( Wait(0.12),
-                                     Func(self.attack,attackMask,5,5 ) #attack, bitmasks, range, damage
-                                   )
-        self.activeTimer.start()
-        self.mapEvent(5,"RPunch")
-
-    def filterLPunch(self,request,args):
-        if self.transitionTimer.getT() > self.transitionTimer.getDuration()-0.2 :  #allow player to hit the next strike 0.2 to 0 seconds befor the animation finished
-            return request
-
-    def exitLPunch(self):
-        self.fighterinstance.faceOpponent(True)
-        self.transitionTimer = None
-        self.activeInterval = None
-        self.clearMapping()
-        
-    #--------------------------------    
-        
+    #-------------
     def enterKick(self):
+        self.stand()
         self.fighterinstance.faceOpponent(False)
         self.fighter.stop()
         self.fighter.play('kick')
@@ -293,28 +447,29 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
 
     def exitKick(self):
         self.fighterinstance.faceOpponent(True)
-        self.transitionTimer = None
-        self.activeInterval = None
-        self.clearMapping()
+        self.cancelTransition()
+        self.cancelActive()
   
-    #-----------------  
-
-    def enterDefense(self):
-        newBitMask = BitMask32()
-        newBitMask.setBit(1)
-        newBitMask.setBit(2)
-        self.setDBM(newBitMask)
-        
+    
+    #----------------
+    
+    """
+  
+    #------------
+    def enterLStep(self):
+        self.fighter.loop("side-step")
+        self.fighterinstance.setSpeed(0,4.41)
+    def filterIdle(self,request,options):
+        if request != "LStep":
+            return request
+    def exitLStep(self):
         self.fighter.stop()
-        self.fighter.loop('defense')
-        self.mapEvent(-7,"Idle")
+        self.fighterinstance.setSpeed(0,0)
+ 
 
-
-    def exitDefense(self):
-        newBitMask = BitMask32()
-        self.setDBM(newBitMask)
-        self.transitionTimer = None
-        self.activeInterval = None
-        self.clearMapping()
         
-    #-----------------    
+
+   
+        
+    #-----------------   
+    """ 

@@ -100,6 +100,7 @@ class Fighter():
         """
         returns 0 if not hit, 1 if hit was blocked, 2 if hit, 3 for hit+KO 
         """
+        print self.statusBitMask,attackBitMask
         if self.health <=0:
             return 4 #player is ko already
             
@@ -108,7 +109,7 @@ class Fighter():
             #attack misses due to out of range.
             return 0 
 
-        if self.statusBitMask & attackBitMask == 0: # attak misses cause the player avoided it. went low or so.
+        if (self.statusBitMask & attackBitMask).getWord() == 0: # attak misses cause the player avoided it. went low or so.
             return 0
   
         if (self.defenseBitMask & attackBitMask).getWord():
@@ -126,7 +127,10 @@ class Fighter():
                 taskMgr.doMethodLater(0.5,self.callOnDeath,"RoundEnd") 
                 return 3
             #TODO: requesting the same state as you are in doesnt work well.sorta need to re-enter the hit state
-            self.fsm.forceTransition("Hit")
+            if "Crouch" in self.fsm.state:
+                self.fsm.forceTransition("CrouchHit")
+            elif self.fsm.state:
+                self.fsm.forceTransition("Hit")
             return 2 #regular hit
     
     def setSpeed(self,x,y):
