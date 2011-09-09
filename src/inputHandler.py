@@ -2,7 +2,7 @@
 from direct.showbase import DirectObject
 
 class InputHandler(DirectObject.DirectObject):
-    def __init__(self,keymap,side):
+    def __init__(self,fsm,side):
         #lets start by creating a mapping a key to a number, so we get independant of keyboards, controllers, cpu and networking.
         #this code, still is keyboard dependant is it maps keys to an event number (the index of the key)
         #using ["a","b","c"] , will make key a the event 1, b event 2 and so on.
@@ -15,6 +15,9 @@ class InputHandler(DirectObject.DirectObject):
         #example keymap = ["","arrow_up","arrow_down","arrow_left","arrow_right","1","2","3"] 
         
         #negative event numbers map to key-lift events . so we cant use event 0 as -0 == 0 , stuffing "" as index 0
+        ##TODO: load the keymap from a config file!
+        keymap = [["f","t","r","d","x","v","l"],["arrow_up","arrow_down","arrow_left","arrow_right","1","2","3"] ]
+        keymap = keymap[side]
         keymap.insert(0,"")
         self.side = side
         self.keystatus = set()

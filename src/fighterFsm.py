@@ -6,8 +6,9 @@ from direct.interval.FunctionInterval import Func,Wait
 from direct.interval.SoundInterval import SoundInterval
 
 from panda3d.core import BitMask32
+from inputHandler import InputHandler
+from playerSoundFX import PlayerSoundFX
 
-from random import choice
 
 #TODO: adding states for all animations, an before and after round state ,etc.. this pretty much is the core of the game.
 
@@ -19,8 +20,8 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
                     ## or if we should inherit Fighter from FSM and simply stuff everything in there wich would be bad cause we copy all shared code around
    
         
-    def setup(self,FighterClassInstance,inputHandlerInstance,side):
-        self.inputHandler = inputHandlerInstance
+    def setup(self,FighterClassInstance,side):
+        self.inputHandler = InputHandler(self,side)
         path = "../assets/models/stickdummy01/export/"
         self.fighter = Actor(path+'stickfigure', 
                                         {
@@ -49,36 +50,8 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
         self.transitionTimer = None #usually holds a sequence like sequence(Wait(time),self.request('nextstate'))
         
         #loading sounds... could go in an extra-file
-        path = "../assets/sounds/"
-        self.hitsounds = []
-        self.misssounds = []
-        self.blocksounds = []
-
-        for x in range(1,6):        
-            Sound = loader.loadSfx(path+"hit/hit"+str(x)+".wav")
-            self.hitsounds.append( SoundInterval(
-                                    Sound,
-                                    loop = 0,
-                                    volume =1.0,
-                                    )
-                                 )                                                       
-        for x in range(1,4):        
-            Sound = loader.loadSfx(path+"block/block"+str(x)+".wav")
-            self.blocksounds.append( SoundInterval(
-                                    Sound,
-                                    loop = 0,
-                                    volume =1.0,
-                                    )
-                                 )    
-        
-        for x in range(1,7):        
-            Sound = loader.loadSfx(path+"miss/miss"+str(x)+".wav")
-            self.misssounds.append( SoundInterval(
-                                    Sound,
-                                    loop = 0,
-                                    volume =1.0,
-                                    )
-                                 )
+        self.sounds = PlayerSoundFX()
+                                 
         self.request("Idle")
     
     def mapEvent(self,eventNr,event,activeevents=[]):
@@ -111,17 +84,19 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
         """
         hit = self.fighterinstance.attack(attackBitMask,attackrange,damageHit,damageDodge)
         if hit == 0:
-            choice(self.misssounds).start()
+            self.sounds.playMiss()
         elif hit == 1:
-            choice(self.blocksounds).start()
+            self.sounds.playBlock()
         elif hit == 2:
-            choice(self.hitsounds).start()
+            self.sounds.playHit()
         elif hit == 3:
             #the other player went ko , go to win-state
-            choice(self.hitsounds).start()
+            self.sounds.playMiss()
         elif hit == 4:
             pass
             #the other player is ko already..    
+            #we still miss the hit
+            self.sounds.playMiss()
 
     def cancelActive(self,task=0):
         if self.activeInterval:

@@ -1,9 +1,9 @@
 from panda3d.core import BitMask32 ,  CollisionTraverser ,CollisionNode, CollisionRay , CollisionHandlerQueue , Vec3
 from hud import PlayerHud
 from fighterFsm import FighterFsm
-from inputHandler import InputHandler
+
 class Fighter():
-    def __init__(self,characterPath , callOnDeath , side , keymap, name = None):
+    def __init__(self,characterPath , callOnDeath , side , name = None):
         #side indicates if the player is on the left or right side.
         #TODO: add collision tests against floor and ring-out geometry in the arena, 
         
@@ -31,9 +31,9 @@ class Fighter():
         #fromObject.show() #more debug collision visuals
         #self.collTrav.showCollisions(render) #debug visuals for collision
         
-        self.inputHandler = InputHandler(keymap,self.side) #input handler remains in the Fighter, could aswell go in fighterfsm but i moved it away from there. at will.
+        #input handler remains in the Fighter, could aswell go in fighterfsm but i moved it away from there. at will.
         self.fsm = FighterFsm(name) 
-        self.fsm.setup(self,self.inputHandler,self.side) 
+        self.fsm.setup(self,self.side) 
         self.healthBar = PlayerHud(side, name )
         self.prepareFighter()
              
