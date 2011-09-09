@@ -100,7 +100,6 @@ class Fighter():
         """
         returns 0 if not hit, 1 if hit was blocked, 2 if hit, 3 for hit+KO 
         """
-        print self.statusBitMask,attackBitMask
         if self.health <=0:
             return 4 #player is ko already
             
