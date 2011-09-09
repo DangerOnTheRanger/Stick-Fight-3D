@@ -43,6 +43,9 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
         self.fighter.reparentTo(render)
         self.fighter.setBlend(frameBlend=True)
         
+        self.fighter.setPlayRate(4.0, 'step')
+        
+        
         self.fighterinstance = FighterClassInstance
         self.fighter.reparentTo(self.fighterinstance.getNP())
         self.activeInterval = None #we will store our active sequence,parallel or interval here, so we can easily clean it up 

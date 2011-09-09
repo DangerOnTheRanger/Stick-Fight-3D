@@ -1,7 +1,5 @@
 from panda3d.core import *
-from direct.gui.DirectGui import *
 from direct.gui.OnscreenText import OnscreenText 
-import random
 from os import listdir, sep
 from math import pi, cos
 from direct.interval.LerpInterval import LerpFunc
@@ -66,6 +64,7 @@ class VersusArea(object):
         
     def setPlayerImage(self, num, image):
         self.images[num].geom.setTexture(image)
+        self.images[num].lightUp()
     
     def setPlayerSub(self, num, text):
         self.subs[num]["text"] = text
@@ -103,9 +102,8 @@ class PortraitArray(object):
         temp = []
         
         self.vs = VersusArea()
-        
+        # initial selection
         self.players = [[0,0],[0,0]]
-        
         
         
         

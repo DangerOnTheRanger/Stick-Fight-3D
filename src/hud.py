@@ -4,6 +4,8 @@ from panda3d.core import TextNode
 from direct.task import Task
 from direct.interval.LerpInterval import LerpFunc
 from direct.interval.IntervalGlobal import *
+from pandac.PandaModules import TransparencyAttrib
+from os import sep
 
 PLAYER_1_SIDE, PLAYER_2_SIDE = range(2)
 
@@ -116,6 +118,9 @@ class AnimatedText(object):
     def __init__(self, text = "", pos = (0,0.3), time = 1.0):
         self.text = OnscreenText(text, scale = 1.0, pos = pos)
         self.text.hide()
+        # hardcoded sequence of emerging, 
+        # staying for a while on the screen
+        # and slowly disappearing
         self.seq = Sequence(
             LerpFunc(self._easeIn, fromData=0, toData=1,
              duration=0.5, blendType='noBlend'), 
@@ -146,6 +151,51 @@ class AnimatedText(object):
         self.text["text"] = text
         self.play()
     
+# similar to above but offering to animate images instead
+class AnimatedImage(object):
+    
+    def __init__(self, directory, pad = 4, position = (0,0.1,0.3), time = 1.0):
+        self.anim = OnscreenImage(image = directory + sep + directory + "0"*pad + ".png", 
+                                    pos = position)
+        
+        self.textures = self._loadTextureMovie(24, directory + sep + directory,'png', padding = pad)
+        self.fps = 25
+
+        self.anim.hide()
+
+        self.seq = Sequence(
+            Parallel(LerpFunc(self._easeOut, fromData=0, toData=1,
+             duration=1.5, blendType='noBlend'), 
+            LerpFunc(self._animate, fromData=0, toData=1,
+             duration=1.5, blendType='noBlend')),
+             Func(self.anim.hide)
+             )
+
+        
+    def play(self):
+        self.anim.show()
+        self.seq.start()
+    
+    def _easeIn(self, t):
+        self.anim["image"]
+        self.anim["scale"] = 1.0 - 0.8*t
+
+    def _animate(self, t):
+        currentFrame = int(t * self.fps)
+        self.anim["image"] = self.textures[currentFrame % len(self.textures)]
+        self.anim.setTransparency(TransparencyAttrib.MAlpha)
+
+    def _easeOut(self, t):
+        t = 1-t
+        self.anim["scale"] = 0.5 - 0.1*t
+        
+          
+    
+    def _loadTextureMovie(self, frames, name, suffix, padding = 1):
+        return [loader.loadTexture((name+"%0"+str(padding)+"d."+suffix) % i) 
+            for i in range(frames)]
+
+
 
 # only a test function
 
@@ -162,8 +212,11 @@ def test():
     timer = Timer()
     timer.setTime(90)
     
-    at = AnimatedText("K.O.")
+    at1 = AnimatedText("K.O.")
+    at = AnimatedImage("explosion")
+    at1.play()
     at.play()
+    
     
     # example of how Timer which is itself only a GUI element can be used from outside
     #taskMgr.doMethodLater(1, timerTask, 'timerTask', extraArgs = [timer], appendTask = True)  
