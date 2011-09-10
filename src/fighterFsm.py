@@ -224,7 +224,7 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
         self.fighterinstance.faceOpponent(False)
         self.fighter.stop()
         self.fighter.play('jump-in')
-        self.fighterinstance.setSpeed(7.92,0)
+        self.fighterinstance.setSpeed(13,0)
         #TODO:add a parallele here, modifying the bitmasks during jump
         #till then. jump all the time
         newBitMask = BitMask32()
@@ -250,7 +250,7 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
         self.fighterinstance.faceOpponent(False)
         self.fighter.stop()
         self.fighter.play('jump-out')
-        self.fighterinstance.setSpeed(-7.92,0)
+        self.fighterinstance.setSpeed(-13.19,0)
         #TODO:add a parallele here, modifying the bitmasks during jump
         #till then. jump all the time
         newBitMask = BitMask32()
