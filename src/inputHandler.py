@@ -104,9 +104,11 @@ class InputHandler(DirectObject.DirectObject):
                 if (trigger.trigger and trigger.trigger == eventnr) or trigger.trigger == 0: #if the triggerkey matches, or if ther is none assigned
                     #the trigger logic may get deeper with the order of events,
                     if "enter"+trigger.state in dir(self.fsm):
-                        self.fsm.request(trigger.state)
-                        return
+                        if self.fsm.state :
+                            self.fsm.request(trigger.state)
+                            return
                     else:
                         print "requested state not in FSM",trigger.state
-        self.fsm.request("Idle")
+        if self.fsm.state :
+            self.fsm.request("Idle")
 
