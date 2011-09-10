@@ -1,6 +1,7 @@
 
 from direct.showbase import DirectObject
 from operator import attrgetter
+from configFile import readKeys
 class stateTrigger():
     def __init__(self,triggerEvent,state,eventMap=[],eventOrder=[]):
         self.trigger = triggerEvent #stores the key that triggers the state
@@ -40,7 +41,7 @@ class InputHandler(DirectObject.DirectObject):
         
         #negative event numbers map to key-lift events . so we cant use event 0 as -0 == 0 , stuffing "" as index 0 , 0 will double as "no event key neccessary"
         ##TODO: load the keymap from a config file!
-        keymap = [["f","t","r","d","x","v","l"],["arrow_up","arrow_down","arrow_left","arrow_right","1","2","3"] ]
+        keymap = readKeys()
         keymap = keymap[side]
         keymap.insert(0,"")
         self.fsm=fsm
@@ -103,9 +104,11 @@ class InputHandler(DirectObject.DirectObject):
                 if (trigger.trigger and trigger.trigger == eventnr) or trigger.trigger == 0: #if the triggerkey matches, or if ther is none assigned
                     #the trigger logic may get deeper with the order of events,
                     if "enter"+trigger.state in dir(self.fsm):
-                        self.fsm.request(trigger.state)
-                        return
+                        if self.fsm.state :
+                            self.fsm.request(trigger.state)
+                            return
                     else:
                         print "requested state not in FSM",trigger.state
-        self.fsm.request("Idle")
+        if self.fsm.state :
+            self.fsm.request("Idle")
 

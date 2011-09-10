@@ -91,7 +91,7 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
             self.sounds.playHit()
         elif hit == 3:
             #the other player went ko , go to win-state
-            self.sounds.playMiss()
+            self.sounds.playHit()
         elif hit == 4:
             pass
             #the other player is ko already..    
