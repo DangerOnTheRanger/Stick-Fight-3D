@@ -100,12 +100,12 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
     #----------
     def stand(self):
         newBitMask = BitMask32()
-        newBitMask.setRange(0,3)
+        newBitMask.setRange(0,4)
         self.setSBM(newBitMask)
     #-----------
     def crouch(self):
         newBitMask = BitMask32()
-        newBitMask.setRange(0,1)
+        newBitMask.setRange(0,2)
         newBitMask.setBit(3)
         self.setSBM(newBitMask)
         
