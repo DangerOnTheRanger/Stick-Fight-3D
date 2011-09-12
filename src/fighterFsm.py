@@ -23,8 +23,7 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
         
     def setup(self,FighterClassInstance,characterPath,side):
         self.inputHandler = InputHandler(self,side)
-        path = "../assets/fighters/Stickman/"
-        #path = characterPath
+        path = characterPath
         self.cfgData = readCharacter(path)
         actorPath = path+self.cfgData["actorFile"]
         self.fighter = Actor(actorPath,

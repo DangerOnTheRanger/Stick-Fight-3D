@@ -2,7 +2,7 @@ from direct.showbase.ShowBase import ShowBase
 from match import Match
 base = ShowBase()
 
-Match(None,None,'../assets/models/floortile/floortile')
+Match("../assets/fighters/Stickman/","../assets/fighters/Stickman/",'../assets/models/floortile/floortile')
 
 #base.disableMouse()
 #base.camera.setY(-250)
