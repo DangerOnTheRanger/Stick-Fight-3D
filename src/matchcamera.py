@@ -9,7 +9,7 @@ class MatchCamera():
         self.pivot = render.attachNewNode("camera-pivot")
         self.pivot.setPos( (self.p1.getPos(render)+self.p2.getPos(render) )/2 )
         self.pivot.lookAt(self.p1)
-        self.cam.ls()
+        #self.cam.ls()
         
         taskMgr.add(self.cameraTask,"cameraTask")
     

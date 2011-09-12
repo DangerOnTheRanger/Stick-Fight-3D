@@ -33,7 +33,7 @@ class Fighter():
         
         #input handler remains in the Fighter, could aswell go in fighterfsm but i moved it away from there. at will.
         self.fsm = FighterFsm(name) 
-        self.fsm.setup(self,self.side) 
+        self.fsm.setup(self,characterPath,self.side) 
         self.healthBar = PlayerHud(side, name )
         self.prepareFighter()
              

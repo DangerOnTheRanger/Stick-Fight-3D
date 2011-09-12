@@ -160,7 +160,7 @@ class InputHandler(DirectObject.DirectObject):
         if "enter" + state in dir(self.fsm):
             if self.fsm.state:
                 self.fsm.request(state)
-                print "requested",state
+                #print "requested",state
         else:
             print "requested state not in FSM", state 
         self.nextState = None

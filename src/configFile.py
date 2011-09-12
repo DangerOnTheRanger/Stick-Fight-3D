@@ -41,3 +41,25 @@ def readKeys():
         i.append( config.get(p, 'defense') )        
         keymap.append(i)
     return keymap
+
+def readCharacter(pathToChar):
+    config = ConfigParser.RawConfigParser()
+    if pathToChar[-1]!="/":
+        pathToChar+="/"    
+    config.read(pathToChar+'character.cfg')
+    outputDict =dict()
+    outputDict['actorFile'] = config.get("base","actorFile")
+    for attack in ["kick","punch","crouch-punch","crouch-kick"]:
+        outputDict[attack] = dict({"delay" : float(config.get(attack,"delay")) ,
+                                   "attackbit" : int(config.get(attack,"attackbit")),
+                                   "range" : float(config.get(attack,"range")),
+                                   "damage" : float(config.get(attack,"damage")),
+                                   "blockeddamage" : float(config.get(attack,"blockeddamage")),
+                                   "angle" : float(config.get(attack,"angle")),
+                                 } )
+    for move in ["run-in","run-out","jump-in","jump-out"]:
+        outputDict[move] = dict({"speedx" : float(config.get(move,"speedx")) ,
+                                 "speedy" : float(config.get(move,"speedy"))
+                                 } )
+                                 
+    return outputDict 

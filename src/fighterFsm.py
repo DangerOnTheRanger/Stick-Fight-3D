@@ -8,7 +8,7 @@ from direct.interval.SoundInterval import SoundInterval
 from panda3d.core import BitMask32
 from inputHandler import InputHandler
 from playerSoundFX import PlayerSoundFX
-
+from configFile import readCharacter
 
 #TODO: adding states for all animations, an before and after round state ,etc.. this pretty much is the core of the game.
 
@@ -21,29 +21,32 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
                     #bitmasks are 0 for on the floor, 1 for legs, 2 for torso&head , 
                     #3 for vertical down (like hammer smackdown, bodyslam form the back of a horse, meteroids...)
         
-    def setup(self,FighterClassInstance,side):
+    def setup(self,FighterClassInstance,characterPath,side):
         self.inputHandler = InputHandler(self,side)
-        path = "../assets/models/stickdummy01/export/"
-        self.fighter = Actor(path+'stickfigure', 
+        path = "../assets/fighters/Stickman/"
+        #path = characterPath
+        self.cfgData = readCharacter(path)
+        actorPath = path+self.cfgData["actorFile"]
+        self.fighter = Actor(actorPath,
                                         { 
-                                          'idle'        :path+'stickfigure-idle'   ,
-                                          'jump'        :path+'stickfigure-jump', 
-                                          'crouch'      :path+'stickfigure-crouch-idle',                                      
-                                          'runIn'       :path+'stickfigure-run'    ,
-                                          'runOut'      :path+'stickfigure-step'   ,
-                                          'punch'       :path+'stickfigure-r_punch',
-                                          'hit'         :path+'stickfigure-hit'    ,
-                                          'defense'     :path+'stickfigure-defense',
-                                          'kick'        :path+'stickfigure-kick'   ,
-                                          'ko'          :path+'stickfigure-ko'     ,
-                                          'crouch-punch':path+'stickfigure-crouch-punch',       
-                                          'crouch-kick' :path+'stickfigure-crouch-kick', 
-                                          'crouch-defense':path+'stickfigure-crouch-defense', 
-                                          'crouch-hit'  :path+'stickfigure-crouch-hit', 
-                                          'jump-in'     :path+'stickfigure-jump-forward', 
-                                          'jump-out'     :path+'stickfigure-jump-backward', 
-                                          #'round-kick'  :path+'stickfigure-round-kick',
-                                          #'side-step'   :path+'stickfigure-side-step'
+                                          'idle'        :actorPath+'-idle'   ,
+                                          'jump'        :actorPath+'-jump', 
+                                          'crouch'      :actorPath+'-crouch-idle',                                      
+                                          'runIn'       :actorPath+'-run'    ,
+                                          'runOut'      :actorPath+'-step'   ,
+                                          'punch'       :actorPath+'-r_punch',
+                                          'hit'         :actorPath+'-hit'    ,
+                                          'defense'     :actorPath+'-defense',
+                                          'kick'        :actorPath+'-kick'   ,
+                                          'ko'          :actorPath+'-ko'     ,
+                                          'crouch-punch':actorPath+'-crouch-punch',       
+                                          'crouch-kick' :actorPath+'-crouch-kick', 
+                                          'crouch-defense':actorPath+'-crouch-defense', 
+                                          'crouch-hit'  :actorPath+'-crouch-hit', 
+                                          'jump-in'     :actorPath+'-jump-forward', 
+                                          'jump-out'     :actorPath+'-jump-backward', 
+                                          #'round-kick'  :actorPath+'-round-kick',
+                                          #'side-step'   :actorPath+'-side-step'
 
                                         })
         #model was rotated the wrong way in blender.. darn fixing it
@@ -53,8 +56,6 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
         self.fighter.setBlend(frameBlend=True)
         
         self.fighter.setPlayRate(4.0, 'step')
-        
-        
         self.fighterinstance = FighterClassInstance
         self.fighter.reparentTo(self.fighterinstance.getNP())
         self.activeTimer = None #we will store our active sequence,parallel or interval here, so we can easily clean it up 
@@ -65,7 +66,13 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
                                  
         self.request("Idle")
     
-   
+    def attackSeq(self,data):
+        attackMask = BitMask32()
+        attackMask.setBit(data["attackbit"])
+        return Sequence( Wait(data["delay"]),
+                         Func(self.attack,attackMask,data["range"],data["damage"], data["blockeddamage"],data["angle"])
+                       )
+        
     def setSBM(self,bitmask):
         """
         yet another convenience function, sets the status bit mask
@@ -78,11 +85,11 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
         """
         self.fighterinstance.setDefenseBitMask(bitmask)    
             
-    def attack(self,attackBitMask,attackrange,damageHit,damageDodge=0):
+    def attack(self,attackBitMask,attackrange,damageHit,damageDodge=0,angle=30):
         """
         more convenience function, this one attacks the opponent
         """
-        hit = self.fighterinstance.attack(attackBitMask,attackrange,damageHit,damageDodge)
+        hit = self.fighterinstance.attack(attackBitMask,attackrange,damageHit,damageDodge,angle)
         if hit == 0:
             self.sounds.playMiss()
         elif hit == 1:
@@ -193,7 +200,8 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
     def enterRunIn(self):
         self.stand()
         self.fighter.loop("runIn")
-        self.fighterinstance.setSpeed(20.23 ,0)
+        
+        self.fighterinstance.setSpeed(self.cfgData["run-in"]["speedx"],self.cfgData["run-in"]["speedy"])
         
     def filterRunIn(self,request,options):
         if request != "RunIn":
@@ -208,7 +216,7 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
     def enterRunOut(self):
         self.stand()
         self.fighter.loop("runOut")
-        self.fighterinstance.setSpeed(-6.15 ,0)
+        self.fighterinstance.setSpeed(self.cfgData["run-out"]["speedx"],self.cfgData["run-out"]["speedy"])
         
     def filterRunOut(self,request,options):
         if request != "RunOut":
@@ -224,7 +232,7 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
         self.fighterinstance.faceOpponent(False)
         self.fighter.stop()
         self.fighter.play('jump-in')
-        self.fighterinstance.setSpeed(13,0)
+        self.fighterinstance.setSpeed(self.cfgData["jump-in"]["speedx"],self.cfgData["jump-in"]["speedy"])
         #TODO:add a parallele here, modifying the bitmasks during jump
         #till then. jump all the time
         newBitMask = BitMask32()
@@ -250,7 +258,7 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
         self.fighterinstance.faceOpponent(False)
         self.fighter.stop()
         self.fighter.play('jump-out')
-        self.fighterinstance.setSpeed(-13.19,0)
+        self.fighterinstance.setSpeed(self.cfgData["jump-out"]["speedx"],self.cfgData["jump-out"]["speedy"])
         #TODO:add a parallele here, modifying the bitmasks during jump
         #till then. jump all the time
         newBitMask = BitMask32()
@@ -342,11 +350,10 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
         self.fighter.play('crouch-punch')
         self.transitionTimer= Sequence(Wait(self.fighter.getDuration()), Func(self.inputHandler.pollEvents ) )
         self.transitionTimer.start() 
-        attackMask = BitMask32()
-        attackMask.setBit(1)
-        self.activeTimer = Sequence( Wait(0.12),
-                                     Func(self.attack,attackMask,5,5 ) #attack, bitmasks, range, damage
-                                   )
+        
+        
+        data = self.cfgData["crouch-punch"]
+        self.activeTimer = self.attackSeq(data)
         self.activeTimer.start()
 
 
@@ -367,11 +374,9 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
         self.fighter.play('crouch-kick')
         self.transitionTimer= Sequence(Wait(self.fighter.getDuration()), Func(self.inputHandler.pollEvents ) )
         self.transitionTimer.start() 
-        attackMask = BitMask32()
-        attackMask.setBit(1)
-        self.activeTimer = Sequence( Wait(0.12),
-                                     Func(self.attack,attackMask,6.5,5 ) #attack bitmask, range, damage
-                                   )
+        
+        data = self.cfgData["crouch-kick"]
+        self.activeTimer = self.attackSeq(data)
         self.activeTimer.start()
 
 
@@ -415,11 +420,9 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
         self.fighter.play('punch')
         self.transitionTimer= Sequence(Wait(self.fighter.getDuration()), Func(self.inputHandler.pollEvents ) )
         self.transitionTimer.start() 
-        attackMask = BitMask32()
-        attackMask.setBit(2)
-        self.activeTimer = Sequence( Wait(0.12),
-                                     Func(self.attack,attackMask,5,5 ) #attack, bitmasks, range, damage
-                                   )
+        
+        data = self.cfgData["punch"]
+        self.activeTimer = self.attackSeq(data)
         self.activeTimer.start()
 
 
@@ -440,11 +443,9 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
         self.fighter.play('kick')
         self.transitionTimer= Sequence(Wait(self.fighter.getDuration()), Func(self.request,"Idle" ) )
         self.transitionTimer.start()
-        attackMask = BitMask32()
-        attackMask.setBit(2)
-        self.activeTimer = Sequence( Wait(0.16),
-                                     Func(self.attack,attackMask,6,10,2 ) #attack, bitmasks, range, damage, dodgedamage
-                                   )
+        
+        data = self.cfgData["kick"]
+        self.activeTimer = self.attackSeq(data)
         self.activeTimer.start()
 
     def filterKick(self,request,args):
