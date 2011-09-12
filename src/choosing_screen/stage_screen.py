@@ -11,6 +11,7 @@ class PreviewStrip(object):
         self.height = height
         self.catalog = catalog
         
+        self.seq = None
         ratio = 1.3
         self.preview_size = [-0.1*ratio,  0.1*ratio, -0.1, 0.1]
         
@@ -85,6 +86,8 @@ class PreviewStrip(object):
         #last.setTexture(self.textures[self.first])
         self.positions.insert(0,last)
         self.text["text"] = str(self.current().getTexture().getFilename())
+        base.acceptOnce('arrow_right', self.rotateRight)
+        base.acceptOnce('arrow_left', self.rotateLeft)
     
     def _adjustRight(self):
         first = self.positions.pop(0)
@@ -92,8 +95,11 @@ class PreviewStrip(object):
         #first.setTexture(self.textures[self.last])
         self.positions.append(first)
         self.text["text"] = str(self.current().getTexture().getFilename())
+        base.acceptOnce('arrow_right', self.rotateRight)
+        base.acceptOnce('arrow_left', self.rotateLeft)
     
     def rotateLeft(self):
+        base.ignore('arrow_right')
         parallel = Parallel()
         
         for i in range(len(self.positions)-1):
@@ -105,11 +111,14 @@ class PreviewStrip(object):
         pos.setY(pos.getY()*(-1))
 
         parallel.append(self._positionItem(-1,1))
-        seq = Sequence(parallel, Func(self._adjustLeft))
-        seq.start()
+        if self.seq is not None:
+            self.seq.finish()
+        self.seq = Sequence(parallel, Func(self._adjustLeft))
+        self.seq.start()
 
         
     def rotateRight(self):
+        base.ignore('arrow_left')
         parallel = Parallel()
         
         for i in range(len(self.positions)):
@@ -121,8 +130,10 @@ class PreviewStrip(object):
         pos.setX(pos.getX()*(-1))
         pos.setY(pos.getY()*(-1))
         parallel.append(self._positionItem(0,-1))
-        seq = Sequence(parallel, Func(self._adjustRight))
-        seq.start()
+        if self.seq is not None:
+            self.seq.finish()
+        self.seq = Sequence(parallel, Func(self._adjustRight))
+        self.seq.start()
 
     def current(self):
         return self.positions[self.visible/2]
@@ -133,8 +144,8 @@ if __name__ == "__main__":
     
     ps = PreviewStrip("characters")
 
-    base.accept('arrow_left', ps.rotateLeft)
-    base.accept('arrow_right', ps.rotateRight)
+    base.acceptOnce('arrow_left', ps.rotateLeft)
+    base.acceptOnce('arrow_right', ps.rotateRight)
 
 
 
