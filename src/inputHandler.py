@@ -1,10 +1,49 @@
 from direct.showbase import DirectObject
-from operator import attrgetter
+from operator import attrgetter ,itemgetter
 from configFile import readKeys
+from direct.interval.MetaInterval import Sequence
+from direct.interval.FunctionInterval import Func,Wait
 
-
-class stateTrigger(object):
-    def __init__(self, triggerEvent, state, eventMap = [], eventOrder = []):
+class EventRecorder():
+    def __init__(self):
+        self.eventhistory =[]
+    
+    def addEvent(self,eventNum):
+        self.eventhistory.insert(0,[globalClock.getRealTime(),eventNum]) #add the new event with timestamp at the beginning of the list
+        self.cleanUp()
+        
+    def cleanUp(self):
+        while 1:
+            if not len(self.eventhistory):
+                break
+            if self.eventhistory[-1][0] + 0.5 < globalClock.getRealTime(): #the 0.3 specifies how long the backlog of events is kept
+                self.eventhistory.pop(-1) #pop out old elements
+            else:
+                break
+        #print self.eventhistory
+    
+    def testEvents(self,eventChain=[]):
+        """ tests a list of events against the actually pressed buttons. returns true if no list is given or if the set matches.
+        """
+        self.cleanUp()
+        if not len(eventChain):
+            return True
+        if len(self.eventhistory) < len(eventChain): 
+            return False
+        if (globalClock.getRealTime()-self.eventhistory[len(eventChain)-1][0]) > len(eventChain)*0.1: #if you took more than 0.1 seconds on average to press a key..
+            return False
+            
+        getevent = itemgetter(1)
+        eventsNoTime = map(getevent, self.eventhistory)
+        eventsNoTime.reverse()
+        
+        if eventsNoTime[-len(eventChain):] == eventChain:
+            return True
+        
+        
+        
+class StateTrigger(object):
+    def __init__(self, triggerEvent, state, eventMap = [0], eventOrder = []):
         self.trigger = triggerEvent #stores the key that triggers the state
         self.eventMap = set(eventMap) #stores all key-conditions that must be met in order to trigger
         self.eventMap.add(self.trigger) #adds the trigger event in case someone forgot it,
@@ -26,7 +65,8 @@ class stateTrigger(object):
         return repr((self.eventCount, self.trigger, self.state , self.eventMap,
                      self.eventOrder, self.eventOrderCount, self.eventDist))
     #some getter and setter stuff to set the timers and blah. do it later.. TODO: do it now.
-
+    def getOrder(self):
+        return self.eventOrder
 
 class InputHandler(DirectObject.DirectObject):
     def __init__(self, fsm, side):
@@ -58,38 +98,49 @@ class InputHandler(DirectObject.DirectObject):
             self.accept(key, self.setKey, [index, 1])
             self.accept(key + "-up", self.setKey, [index, 0])
             self.keystatus.add(-index)
-        self.events = [] #will store the combos event numbers and state requests
+        self.eventRecorder = EventRecorder() #will store the keys pressed in the past
+        self.stateTimer = Sequence() #this will contain a sequence with a Wait and Func interval, requesting the next state
+                               #unless overwritten by a more recent state (as in double-tab combo)
+        self.nextState = None  #the state into wich the the stateTimer will change so we can avoid lockups when requesting the same state over and over again
         self.permaTriggers = [] #contains the "permanent" mapped inputs, cant be deleted by the fsm.
 
-        self.permaTriggers.append(stateTrigger(1, "Jump", [-2])) #-2 means no jumping when the user presses down.
-        self.permaTriggers.append(stateTrigger(1, "JumpIn", [-2, 4]))
-        self.permaTriggers.append(stateTrigger(1, "JumpOut", [-2, 3]))
-        self.permaTriggers.append(stateTrigger(0, "Crouch", [2]))  #0 means, no special trigger key
-        self.permaTriggers.append(stateTrigger(0, "RunIn", [4]))
-        self.permaTriggers.append(stateTrigger(0, "RunOut", [3]))
-        self.permaTriggers.append(stateTrigger(5, "Punch", [-2])) #ne regular punch when crouching
-        self.permaTriggers.append(stateTrigger(7, "Defense", [-2, 7])) # turn the first 7 (trigger key) to 0 if you like the make attack->defense with static buttons
-        self.permaTriggers.append(stateTrigger(6, "Kick", [-2]))
-        self.permaTriggers.append(stateTrigger(5, "CrouchPunch", [2])) #crouch punch needs crouching *nodnod*
-        self.permaTriggers.append(stateTrigger(6, "CrouchKick", [2])) #so does kicking ..
-        self.permaTriggers.append(stateTrigger(7, "CrouchDefense", [2, 7])) # 
+        self.permaTriggers.append(StateTrigger(1, "Jump", [-2])) #-2 means no jumping when the user presses down.
+        self.permaTriggers.append(StateTrigger(1, "JumpIn", [-2, 4]))
+        self.permaTriggers.append(StateTrigger(1, "JumpOut", [-2, 3]))
+        self.permaTriggers.append(StateTrigger(0, "Crouch", [2]))  #0 means, no special trigger key
+        self.permaTriggers.append(StateTrigger(0, "RunIn", [4]))
+        self.permaTriggers.append(StateTrigger(0, "RunOut", [3]))
+        self.permaTriggers.append(StateTrigger(5, "Punch", [-2])) #ne regular punch when crouching
+        self.permaTriggers.append(StateTrigger(7, "Defense", [-2, 7])) # turn the first 7 (trigger key) to 0 if you like the make attack->defense with static buttons
+        self.permaTriggers.append(StateTrigger(6, "Kick", [-2]))
+        self.permaTriggers.append(StateTrigger(5, "CrouchPunch", [2])) #crouch punch needs crouching *nodnod*
+        self.permaTriggers.append(StateTrigger(6, "CrouchKick", [2])) #so does kicking ..
+        self.permaTriggers.append(StateTrigger(7, "CrouchDefense", [2, 7])) # 
+        self.permaTriggers.append(StateTrigger(1, "EvadeUp",   [0], eventOrder=[1,1])) #there was some.. really odd bug that added event 1, to the event map of
+        self.permaTriggers.append(StateTrigger(2, "EvadeDown", [0], eventOrder=[2,2])) #this line here.when i did not specify the [0]. i dont know why! so i added 0
 
     def setKey(self, eventnum, setOrClear):
         #swap left-right depending on the player side, for the left player,
         #left will be left. something in my head tells me this is not clever, but it works.
         #TODO: have an eye on the side-swapping.. it might fight back and
         #jump at you from behind, tearing your spine out and eat your balls. will happen. promise.
+        
         if self.side and eventnum == 3:
             eventnum = 4
         elif self.side and eventnum == 4:
             eventnum = 3
-
+            
+        
         if setOrClear:
             self.keystatus.add(eventnum)
             self.keystatus.discard(-eventnum)
+            self.eventRecorder.addEvent(eventnum)
         else:
             self.keystatus.add(-eventnum)
             self.keystatus.discard(eventnum)
+            if self.stateTimer.isPlaying():
+                self.stateTimer.insert(-2,Wait(0.05)) #if a key lifts while a new state is requested, delay it to see if a double-tap or other combo follows
+           
 
         for trigger in self.permaTriggers:
             trigger.calcEventDist(eventnum) #update the key-distance-weighting for sorting it corretcy in the pollEvents thing.
@@ -99,12 +150,22 @@ class InputHandler(DirectObject.DirectObject):
     def _getPermaTriggers(self):
         return sorted(
                       self.permaTriggers,
-                      key = attrgetter('eventCount', 'eventOrderCount', 'eventDist'),
+                      key = attrgetter('eventOrderCount', 'eventCount', 'eventDist'),
                       reverse = True)
 
     def _triggerKeyMatchesEventNum(self, eventnr, trigger):
         return trigger.trigger and trigger.trigger == eventnr or trigger.trigger == 0
 
+    def requestState(self,state="Idle"):
+        if "enter" + state in dir(self.fsm):
+            if self.fsm.state:
+                self.fsm.request(state)
+                print "requested",state
+        else:
+            print "requested state not in FSM", state 
+        self.nextState = None
+        self.stateTimer.pause()
+        
     def pollEvents(self, eventnr = 0):
         #olympic sorting! it sorts the eventTriggers by eventCount,eventOrderCount and eventDist in descending order
         #event count comes first as it defines the number of buttons to be pressed, more complex need to be catched first
@@ -115,17 +176,20 @@ class InputHandler(DirectObject.DirectObject):
         #like left-right-left-right running with one button permanently pressed
         #TODO:merge the permaTriggers with temporary triggers, sort the result and continue with that.
         for trigger in self._getPermaTriggers():
+            #print trigger.state, trigger.getOrder(), trigger.eventMap, self.keystatus
             #if all buttons match the current button-states
             if trigger.eventMap.issubset(self.keystatus):
                 #if the triggerkey matches, or if there is none assigned
-                if self._triggerKeyMatchesEventNum(eventnr, trigger):
+                if self._triggerKeyMatchesEventNum(eventnr, trigger) and self.eventRecorder.testEvents(trigger.getOrder()):
                     #the trigger logic may get deeper with the order of events,
-                    if "enter" + trigger.state in dir(self.fsm):
-                        if self.fsm.state:
-                            self.fsm.request(trigger.state)
-                            return
+                    if self.nextState != trigger.state:
+                        self.nextState = trigger.state
+                        self.stateTimer.pause()
+                        self.stateTimer = Sequence(Wait(0.04),Func(self.requestState,trigger.state))
+                        self.stateTimer.start()
+                        return
                     else:
-                        print "requested state not in FSM", trigger.state
-        if self.fsm.state:
-            self.fsm.request("Idle")
-
+                        return
+        self.stateTimer.pause()
+        self.stateTimer = Sequence(Wait(0.04),Func(self.requestState))
+        self.stateTimer.start()

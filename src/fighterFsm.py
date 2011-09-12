@@ -286,6 +286,9 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
         self.transitionTimer.start()
 
     def filterJump(self,request,args):
+        if self.transitionTimer.getT() < 0.1 and "Evade" in request: 
+            return request
+        
         if self.transitionTimer.getT() > self.transitionTimer.getDuration()-0.1 :  #allow player to hit the next strike 0.2 to 0 seconds befor the animation finished
             return request
 
