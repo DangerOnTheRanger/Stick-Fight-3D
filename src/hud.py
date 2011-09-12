@@ -37,6 +37,7 @@ class PlayerHud(object):
 
         self.healthBar = DirectWaitBar(scale = HEALTHBAR_SCALE,
                                        pos = healthBarPos,
+                                       range = 100,
                                        value = 100)
         self.healthBar.reparentTo(render2d)
 
