@@ -208,7 +208,7 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
     def enterRunOut(self):
         self.stand()
         self.fighter.loop("runOut")
-        self.fighterinstance.setSpeed(-4.41 ,0)
+        self.fighterinstance.setSpeed(-6.15 ,0)
         
     def filterRunOut(self,request,options):
         if request != "RunOut":
