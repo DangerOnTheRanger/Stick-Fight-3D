@@ -2,6 +2,7 @@ import hud
 from direct.gui.OnscreenText import OnscreenText
 from panda3d.core import CardMaker
 from os import sep
+from configFile import readKeys
 
 class StageScreen(object):
     def __init__(self):
@@ -18,6 +19,12 @@ class StageScreen(object):
         self.preview = aspect2d.attachNewNode(self.generator.generate())
         self.preview.setPos(0,0, 0.4)
         
+        self.keys = readKeys()
+        self.left = [self.keys[0][1], self.keys[1][2]]
+        self.right = [self.keys[0][3], self.keys[1][3]]
+        self.select = [self.keys[0][4], self.keys[1][4]]
+        
+        
         self.notify()
      
     def updateText(self):
@@ -28,22 +35,40 @@ class StageScreen(object):
         self.preview.setTexture(self.ps.current().getTexture())
         
     def rotateLeft(self):
-        base.ignore('arrow_right')
+        for key in self.right + self.left:
+            base.ignore(key)
+        
         self.ps.rotateLeft()
         
     def rotateRight(self):
-        base.ignore('arrow_left')
+        for key in self.right + self.left:
+            base.ignore(key)
+
         self.ps.rotateRight()
         
     def notify(self):
         self.updateText()
         self.updateImg()
-        base.acceptOnce('arrow_right', self.rotateRight)
-        base.acceptOnce('arrow_left', self.rotateLeft)
+        
+        for key in self.right:
+            base.acceptOnce(key, self.rotateRight)
+        for key in self.left:
+            base.acceptOnce(key, self.rotateLeft)
+
+    
+    def hide(self):
+        self.text.hide()
+        self.preview.hide()
+        self.ps.hide()
+    
+    def show(self):
+        self.text.show()
+        self.preview.show()
+        self.ps.show()
         
 if __name__ == "__main__":
     import direct.directbase.DirectStart 
-
+    print readKeys()
     ps = StageScreen()
     run()
     
