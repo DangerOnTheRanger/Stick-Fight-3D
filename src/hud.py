@@ -40,6 +40,8 @@ class PlayerHud(object):
                                        range = 100,
                                        value = 100)
         self.healthBar.reparentTo(render2d)
+        self.healthBar['frameColor'] = (0.8,0.8,0.8,0.5)
+
 
     def _createRoundIndicator(self):
 
