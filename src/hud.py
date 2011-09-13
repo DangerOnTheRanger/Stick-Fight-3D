@@ -1,11 +1,10 @@
 from direct.gui.DirectGui import *
-from direct.gui.OnscreenText import OnscreenText
-from panda3d.core import TextNode
+from panda3d.core import TextNode, CardMaker
 from direct.task import Task
 from direct.interval.LerpInterval import LerpFunc
 from direct.interval.IntervalGlobal import *
 from pandac.PandaModules import TransparencyAttrib
-from os import sep
+from os import sep, listdir
 
 PLAYER_1_SIDE, PLAYER_2_SIDE = range(2)
 
@@ -154,54 +153,149 @@ class AnimatedText(object):
         self.text["text"] = text
         self.play()
     
-# similar to above but offering to animate images instead
-class AnimatedImage(object):
+class PreviewStrip(object):
     
-    def __init__(self, directory, pad = 4, position = (0,0.1,0.3), time = 1.0):
-        self.anim = OnscreenImage(image = directory + sep + directory + "0"*pad + ".png", 
-                                    pos = position)
+    def __init__(self, catalog, notify, height = -0.5):
+        self.height = height
+        self.catalog = catalog
         
-        self.textures = self._loadTextureMovie(24, directory + sep + directory,'png', padding = pad)
-        self.fps = 25
+        self.notify = notify
 
-        self.anim.hide()
-
-        self.seq = Sequence(
-            Parallel(LerpFunc(self._easeOut, fromData=0, toData=1,
-             duration=1.5, blendType='noBlend'), 
-            LerpFunc(self._animate, fromData=0, toData=1,
-             duration=1.5, blendType='noBlend')),
-             Func(self.anim.hide)
-             )
-
+        self.preview_size = [-0.1,  0.1, -0.1, 0.1]
         
-    def play(self):
-        self.anim.show()
+        self.generator = CardMaker("PreviewMaker") 
+        self.generator.setFrame(*self.preview_size) 
+        
+        self.textures = []
+        self.loadPreviewImages()
+        
+        #number of items visible on the screen
+        self.visible = min(len(self.textures),5)
+        
+        #duration of an animation
+        self.duration = 0.3
+        
+        self.positions = []
+        self.preparePositions()
+        
+        self.head = 0
+        self.tail = self.visible - 1
+        
+    def loadPreviewImages(self):
+        files = listdir(self.catalog)
+        files.sort()
+        
+        for filename in files:
+            self.textures.append(loader.loadTexture(sep.join([self.catalog,filename,"icon.jpg"])))
+
+    
+    # distribution functions they specify the shape in which
+    # initially visible images are arranged
+    def x_dist(self, i):
+        return 0.5*(i - self.visible/2)
+    
+    def y_dist(self, i):
+        return abs (i - self.visible /2 )
+    
+    # initials scaling of the visible images
+    def scale(self, i):
+        try:
+            return 2.5 -  2*abs (float(i)/(self.visible-1) -  0.5)
+        except:
+            return 1.0
+    
+    def preparePositions(self):
+        for i in range(0,self.visible):
+            model = aspect2d.attachNewNode(self.generator.generate())
+            model.setPos(self.x_dist(i), self.y_dist(i), self.height)
+            model.setScale(self.scale(i))
+            # so that images are correctly displayed on top 
+            # of each other
+            model.setDepthTest(True)
+            model.setDepthWrite(True)
+            self.positions.append(model)
+        
+        # setting images    
+        for i in range(len(self.positions)):
+            self.positions[i].setTexture(self.textures[i])
+        
+
+    def _scaleItem(self, i, dir):
+        # if dir is negative item is scaled right
+        # if dir is positive item is scaled left
+        next = (i+dir)%len(self.positions)
+        return LerpScaleInterval (
+                    self.positions[i], 
+                    duration = self.duration,
+                    startScale = self.positions[i].getScale(),
+                    scale = self.positions[next].getScale()
+        )
+       
+    def _positionItem(self, i, dir):
+        # if dir is negative item is moved right
+        # if dir is positive item is moved left 
+        next = (i+dir) % len(self.positions)
+        return LerpPosInterval (
+                    self.positions[i], 
+                    duration = self.duration,
+                    startPos = self.positions[i].getPos(),
+                    pos = self.positions[next].getPos()
+        )
+        
+    def _adjustLeft(self):
+        last = self.positions.pop()
+        self.head = (self.head - 1) % len(self.textures)
+        self.tail = (self.tail - 1) % len(self.textures)
+        last.setTexture(self.textures[self.head])
+        self.positions.insert(0,last)
+        
+        self.notifyAll()
+
+    
+    def _adjustRight(self):
+        first = self.positions.pop(0)
+        self.head = (self.head + 1) % len(self.textures)
+        self.tail = (self.tail + 1) % len(self.textures)
+        first.setTexture(self.textures[self.tail])
+        self.positions.append(first)
+
+        self.notifyAll()
+        
+    
+    def rotateLeft(self):
+        parallel = Parallel()
+        
+        for i in range(len(self.positions)-1):
+            parallel.append( self._positionItem(i, 1))
+            parallel.append( self._scaleItem(i, 1))
+
+        # last item is moved symetrically so it has its scale preserved
+        parallel.append(self._positionItem(-1,1))
+        
+        self.seq = Sequence(parallel, Func(self._adjustLeft))
         self.seq.start()
-    
-    def _easeIn(self, t):
-        self.anim["image"]
-        self.anim["scale"] = 1.0 - 0.8*t
 
-    def _animate(self, t):
-        currentFrame = int(t * self.fps)
-        self.anim["image"] = self.textures[currentFrame % len(self.textures)]
-        self.anim.setTransparency(TransparencyAttrib.MAlpha)
-
-    def _easeOut(self, t):
-        t = 1-t
-        self.anim["scale"] = 0.5 - 0.1*t
         
-          
+    def rotateRight(self):
+        parallel = Parallel()
+        
+        for i in range(len(self.positions)):
+            parallel.append( self._positionItem(i, -1))
+            parallel.append( self._scaleItem(i,  -1))
+ 
+  
+        parallel.append(self._positionItem(0,-1))
+
+        self.seq = Sequence(parallel, Func(self._adjustRight))
+        self.seq.start()
+
+    def current(self):
+        # list is being kept the way that the middle argument in the list is always current
+        return self.positions[self.visible/2]
     
-    def _loadTextureMovie(self, frames, name, suffix, padding = 1):
-        return [loader.loadTexture((name+"%0"+str(padding)+"d."+suffix) % i) 
-            for i in range(frames)]
-
-
-
-# only a test function
-
+    def notifyAll(self):
+        for item in self.notify:
+            item.notify()
 
 
 def test():
@@ -216,9 +310,9 @@ def test():
     timer.setTime(90)
     
     at1 = AnimatedText("K.O.")
-    at = AnimatedImage("explosion")
+
     at1.play()
-    at.play()
+
     
     
     # example of how Timer which is itself only a GUI element can be used from outside
