@@ -68,12 +68,14 @@ class CharacterScreen(object):
             self.players[i]["text"].hide()
             self.players[i]["preview"].hide()
             self.players[i]["strip"].hide()
+        self.vs.hide()
     
     def show(self):
         for i in range(2):
             self.players[i]["text"].show()
             self.players[i]["preview"].show()
             self.players[i]["strip"].show()
+        self.vs.show()
         
 if __name__ == "__main__":
     import direct.directbase.DirectStart 
