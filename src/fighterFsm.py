@@ -30,10 +30,10 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
                                         { 
                                           'idle'        :actorPath+'-idle'   ,
                                           'jump'        :actorPath+'-jump', 
-                                          'crouch'      :actorPath+'-crouch-idle',                                      
-                                          'runIn'       :actorPath+'-run'    ,
-                                          'runOut'      :actorPath+'-step'   ,
-                                          'punch'       :actorPath+'-r_punch',
+                                          'crouch'      :actorPath+'-crouch',                                      
+                                          'run-in'       :actorPath+'-run-in'    ,
+                                          'run-out'      :actorPath+'-run-out'   ,
+                                          'punch'       :actorPath+'-punch',
                                           'hit'         :actorPath+'-hit'    ,
                                           'defense'     :actorPath+'-defense',
                                           'kick'        :actorPath+'-kick'   ,
@@ -42,10 +42,10 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
                                           'crouch-kick' :actorPath+'-crouch-kick', 
                                           'crouch-defense':actorPath+'-crouch-defense', 
                                           'crouch-hit'  :actorPath+'-crouch-hit', 
-                                          'jump-in'     :actorPath+'-jump-forward', 
-                                          'jump-out'     :actorPath+'-jump-backward', 
-                                          #'round-kick'  :actorPath+'-round-kick',
-                                          #'side-step'   :actorPath+'-side-step'
+                                          'jump-in'     :actorPath+'-jump-in', 
+                                          'jump-out'     :actorPath+'-jump-out', 
+                                          #'evade-cw'   :actorPath+'-evade-cw'
+                                          #'evade-ccw'   :actorPath+'-evade-ccw'
 
                                         })
         #model was rotated the wrong way in blender.. darn fixing it
@@ -198,7 +198,7 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
 
     def enterRunIn(self):
         self.stand()
-        self.fighter.loop("runIn")
+        self.fighter.loop("run-in")
         
         self.fighterinstance.setSpeed(self.cfgData["run-in"]["speedx"],self.cfgData["run-in"]["speedy"])
         
@@ -214,7 +214,7 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
      
     def enterRunOut(self):
         self.stand()
-        self.fighter.loop("runOut")
+        self.fighter.loop("run-out")
         self.fighterinstance.setSpeed(self.cfgData["run-out"]["speedx"],self.cfgData["run-out"]["speedy"])
         
     def filterRunOut(self,request,options):
