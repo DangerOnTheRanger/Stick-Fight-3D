@@ -8,8 +8,12 @@ from configFile import readKeys
 class CharacterScreen(object):
     def __init__(self, parent = None):
         self.players = [{},{}]
+        # heights on which preview strips appear
         heights = [0.7,-0.7]
+        # determines separation between previews
         previews = [0.5, -0.5]
+        # parent of the screen, will be notified when
+        # screen does its job
         self.parent = parent
         self.preview_size = [-0.3,  0.3, -0.3, 0.3]
         self.generator = CardMaker("PreviewMaker") 
@@ -91,7 +95,8 @@ class CharacterScreen(object):
             self.players[i]["strip"].hide()
             
         self.vs.hide()
-        base.ignoreAll()
+        for key in self.left+self.right+self.select:
+            base.ignore(key)
     
     def show(self):
         for i in range(2):

@@ -7,7 +7,8 @@ from configFile import readKeys
 class StageScreen(object):
     def __init__(self, parent = None):
         self.ps = hud.PreviewStrip("../assets/stages", notify = [self])
-        
+        # parent of the screen, will be notified when
+        # screen does its job
         self.parent = parent
         
         self.text = OnscreenText("")
@@ -53,7 +54,8 @@ class StageScreen(object):
         
     def sel(self):
         self.ready.show()
-        base.ignoreAll()
+        for key in self.left+self.right+self.select:
+            base.ignore(key)
         if self.parent:
             self.hide()
             self.parent.notify()
@@ -76,7 +78,8 @@ class StageScreen(object):
         self.text.hide()
         self.preview.hide()
         self.ps.hide()
-        base.ignoreAll()
+        for key in self.left+self.right+self.select:
+            base.ignore(key)
     
     def show(self):
         self.text.show()
