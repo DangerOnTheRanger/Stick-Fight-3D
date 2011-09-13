@@ -6,27 +6,30 @@ from configFile import readKeys
 
 
 class CharacterScreen(object):
-    def __init__(self):
+    def __init__(self, parent = None):
         self.players = [{},{}]
         heights = [0.7,-0.7]
         previews = [0.5, -0.5]
-        
+        self.parent = parent
         self.preview_size = [-0.3,  0.3, -0.3, 0.3]
         self.generator = CardMaker("PreviewMaker") 
         self.generator.setFrame(*self.preview_size)
-        
+        self.players_ready = 0
         players = self.players
         
         self.vs = OnscreenText("vs")
         
         for i in range(2):
-            players[i]["strip"] = PreviewStrip("../assets/stages", height = heights[i], notify = [self, i])
+            players[i]["strip"] = PreviewStrip("../assets/fighters", height = heights[i], notify = [self, i])
             
             players[i]["text"] = OnscreenText("")
             players[i]["text"].setPos(0, players[i]["strip"].height - 0.25)
             
             players[i]["preview"] = aspect2d.attachNewNode(self.generator.generate())
             players[i]["preview"].setPos(previews[i],0, 0.0)
+            players[i]["select"] = OnscreenText("ready")
+            players[i]["select"].setPos(0, players[i]["strip"].height)
+            players[i]["select"].hide()
 
         self.keys = readKeys()
         self.left = [self.keys[0][1], self.keys[1][2]]
@@ -54,7 +57,17 @@ class CharacterScreen(object):
         for key in [self.right[num],self.left[num]]:
             base.ignore(key)
         self.players[num]["strip"].rotateRight()
-    
+        
+    def sel(self, num):
+        self.players[num]["select"].show()
+        for key in [self.right[num], self.left[num], self.select[num]]:
+            base.ignore(key)
+        self.players_ready += 1    
+        if self.parent and self.players_ready == 2:
+            self.hide()
+            self.parent.notify()
+            self.players[0]["select"].hide()
+            self.players[1]["select"].hide()
 
     def notify(self, arg = None):
         self.updateText()
@@ -68,13 +81,17 @@ class CharacterScreen(object):
                 base.acceptOnce(key, self.rotateRight, [self.right.index(key)])
             for key in self.left:
                 base.acceptOnce(key, self.rotateLeft, [self.left.index(key)])
+            for key in self.select:
+                base.acceptOnce(key, self.sel, [self.select.index(key)])
     
     def hide(self):
         for i in range(2):
             self.players[i]["text"].hide()
             self.players[i]["preview"].hide()
             self.players[i]["strip"].hide()
+            
         self.vs.hide()
+        base.ignoreAll()
     
     def show(self):
         for i in range(2):
@@ -82,6 +99,7 @@ class CharacterScreen(object):
             self.players[i]["preview"].show()
             self.players[i]["strip"].show()
         self.vs.show()
+        self.notify()
         
     def getPlayers(self):
         players = []
