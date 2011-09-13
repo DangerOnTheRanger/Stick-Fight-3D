@@ -4,6 +4,7 @@ from panda3d.core import CardMaker
 from os import sep
 from configFile import readKeys
 
+
 class CharacterScreen(object):
     def __init__(self):
         self.players = [{},{}]
@@ -19,7 +20,7 @@ class CharacterScreen(object):
         self.vs = OnscreenText("vs")
         
         for i in range(2):
-            players[i]["strip"] = PreviewStrip("../assets/stages", height = heights[i], notify = [self])
+            players[i]["strip"] = PreviewStrip("../assets/stages", height = heights[i], notify = [self, i])
             
             players[i]["text"] = OnscreenText("")
             players[i]["text"].setPos(0, players[i]["strip"].height - 0.25)
@@ -45,23 +46,28 @@ class CharacterScreen(object):
             self.players[i]["preview"].setTexture(t)
         
     def rotateLeft(self, num):
-        for key in self.right + self.left:
+        for key in [self.right[num],self.left[num]]:
             base.ignore(key)
         self.players[num]["strip"].rotateLeft()
         
     def rotateRight(self, num):
-        for key in self.right + self.left:
+        for key in [self.right[num],self.left[num]]:
             base.ignore(key)
         self.players[num]["strip"].rotateRight()
-        
-    def notify(self):
+    
+
+    def notify(self, arg = None):
         self.updateText()
         self.updateImg()
-        
-        for key in self.right:
-            base.acceptOnce(key, self.rotateRight, [self.right.index(key)])
-        for key in self.left:
-            base.acceptOnce(key, self.rotateLeft, [self.left.index(key)])
+        if arg:
+            arg = arg[0]
+            base.acceptOnce(self.right[arg], self.rotateRight, [arg])
+            base.acceptOnce(self.left[arg], self.rotateLeft, [arg])
+        else:
+            for key in self.right:
+                base.acceptOnce(key, self.rotateRight, [self.right.index(key)])
+            for key in self.left:
+                base.acceptOnce(key, self.rotateLeft, [self.left.index(key)])
     
     def hide(self):
         for i in range(2):
@@ -76,6 +82,13 @@ class CharacterScreen(object):
             self.players[i]["preview"].show()
             self.players[i]["strip"].show()
         self.vs.show()
+        
+    def getPlayers(self):
+        players = []
+        for i in range(2):
+            t = str(self.players[i]["strip"].current().getTexture().getFilename()).rstrip("icon.jpg")
+            players.append(t)
+        return players
         
 if __name__ == "__main__":
     import direct.directbase.DirectStart 

@@ -294,8 +294,15 @@ class PreviewStrip(object):
         return self.positions[self.visible/2]
     
     def notifyAll(self):
-        for item in self.notify:
-            item.notify()
+        self.notify[0].notify(self.notify[1:])
+            
+    def hide(self):
+        for item in self.positions:
+            item.hide()
+            
+    def show(self):
+        for item in self.positions:
+            item.show()
 
 
 def test():

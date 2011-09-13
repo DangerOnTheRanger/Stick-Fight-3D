@@ -46,7 +46,7 @@ class StageScreen(object):
 
         self.ps.rotateRight()
         
-    def notify(self):
+    def notify(self, arg = None):
         self.updateText()
         self.updateImg()
         
@@ -66,9 +66,13 @@ class StageScreen(object):
         self.preview.show()
         self.ps.show()
         
+    def getStage(self):
+        t = str(self.ps.current().getTexture().getFilename()).rstrip("icon.jpg")
+        return t + "stage"
+        
 if __name__ == "__main__":
     import direct.directbase.DirectStart 
-    print readKeys()
+
     ps = StageScreen()
     run()
     
