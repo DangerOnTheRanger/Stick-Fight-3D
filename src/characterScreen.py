@@ -19,10 +19,10 @@ class CharacterScreen(object):
         self.generator = CardMaker("PreviewMaker") 
         self.generator.setFrame(*self.preview_size)
         self.players_ready = 0
-        players = self.players
         
         self.vs = OnscreenText("vs")
         
+        players = self.players
         for i in range(2):
             players[i]["strip"] = PreviewStrip("../assets/fighters", height = heights[i], notify = [self, i])
             
@@ -74,6 +74,8 @@ class CharacterScreen(object):
             self.players[1]["select"].hide()
 
     def notify(self, arg = None):
+        # if arg is None that means that we notify ourselves
+        # if it is not None it means that one of our strips notifies us
         self.updateText()
         self.updateImg()
         if arg:
