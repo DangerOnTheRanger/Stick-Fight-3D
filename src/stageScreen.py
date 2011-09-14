@@ -8,7 +8,7 @@ class StageScreen(object):
     def __init__(self, parent = None):
         # we are sending the preview strip reference to us so it can
         # inform us to update text and image preview
-        self.ps = hud.PreviewStrip("../assets/stages", notify = [self])
+        self.ps = hud.PreviewStrip("../assets/stages", parent = [self])
         # parent of the screen, will be notified when
         # screen does its job
         self.parent = parent
