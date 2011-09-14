@@ -19,12 +19,12 @@ class CharacterScreen(object):
         self.generator = CardMaker("PreviewMaker") 
         self.generator.setFrame(*self.preview_size)
         self.players_ready = 0
-        players = self.players
         
         self.vs = OnscreenText("vs")
         
+        players = self.players
         for i in range(2):
-            players[i]["strip"] = PreviewStrip("../assets/fighters", height = heights[i], notify = [self, i])
+            players[i]["strip"] = PreviewStrip("../assets/fighters", def_height = heights[i], parent = [self, i])
             
             players[i]["text"] = OnscreenText("")
             players[i]["text"].setPos(0, players[i]["strip"].height - 0.25)
@@ -38,7 +38,7 @@ class CharacterScreen(object):
         self.keys = readKeys()
         self.left = [self.keys[0][1], self.keys[1][2]]
         self.right = [self.keys[0][3], self.keys[1][3]]
-        self.select = [self.keys[0][4], self.keys[1][4]]
+        self.confirm = [self.keys[0][4], self.keys[1][4]]
         
         self.notify()
      
@@ -62,9 +62,9 @@ class CharacterScreen(object):
             base.ignore(key)
         self.players[num]["strip"].rotateRight()
         
-    def sel(self, num):
+    def select(self, num):
         self.players[num]["select"].show()
-        for key in [self.right[num], self.left[num], self.select[num]]:
+        for key in [self.right[num], self.left[num], self.confirm[num]]:
             base.ignore(key)
         self.players_ready += 1    
         if self.parent and self.players_ready == 2:
@@ -74,6 +74,8 @@ class CharacterScreen(object):
             self.players[1]["select"].hide()
 
     def notify(self, arg = None):
+        # if arg is None that means that we notify ourselves
+        # if it is not None it means that one of our strips notifies us
         self.updateText()
         self.updateImg()
         if arg:
@@ -85,8 +87,8 @@ class CharacterScreen(object):
                 base.acceptOnce(key, self.rotateRight, [self.right.index(key)])
             for key in self.left:
                 base.acceptOnce(key, self.rotateLeft, [self.left.index(key)])
-            for key in self.select:
-                base.acceptOnce(key, self.sel, [self.select.index(key)])
+            for key in self.confirm:
+                base.acceptOnce(key, self.select, [self.confirm.index(key)])
     
     def hide(self):
         for i in range(2):
@@ -95,7 +97,7 @@ class CharacterScreen(object):
             self.players[i]["strip"].hide()
             
         self.vs.hide()
-        for key in self.left+self.right+self.select:
+        for key in self.left+self.right+self.confirm:
             base.ignore(key)
     
     def show(self):

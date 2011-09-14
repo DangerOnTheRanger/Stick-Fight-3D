@@ -13,6 +13,7 @@ class Game(object):
         
         for screen in self.screens:
             screen.hide()
+        self.notify()
     
     def notify(self):
         if self.i == len(self.screens):
@@ -28,7 +29,7 @@ class Game(object):
         
 
 g = Game()
-g.notify()
+
 
 #Match("../assets/fighters/Stickman/","../assets/fighters/Stickman/",'../assets/stages/Test Stage - Green/stage')
 

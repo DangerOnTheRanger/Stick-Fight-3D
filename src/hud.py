@@ -155,12 +155,13 @@ class AnimatedText(object):
     
 class PreviewStrip(object):
     
-    def __init__(self, catalog, notify, height = -0.5):
-        self.height = height
+    def __init__(self, catalog, parent = None, def_height = -0.5):
+        self.height = def_height
         self.catalog = catalog
         
-        self.notify = notify
-
+        
+        self.parent = parent[0]
+        self.args = parent[1:]
         self.preview_size = [-0.1,  0.1, -0.1, 0.1]
         
         self.generator = CardMaker("PreviewMaker") 
@@ -195,9 +196,13 @@ class PreviewStrip(object):
         return 0.5*(i - self.visible/2)
     
     def y_dist(self, i):
-        return abs (i - self.visible /2 )
+        return abs (i - self.visible/2)
+        
+    def z_dist(self, i):
+        return self.height
     
     # initials scaling of the visible images
+    # this scaling function makes the middle one the biggest
     def scale(self, i):
         try:
             return 2.5 -  2*abs (float(i)/(self.visible-1) -  0.5)
@@ -207,7 +212,7 @@ class PreviewStrip(object):
     def preparePositions(self):
         for i in range(0,self.visible):
             model = aspect2d.attachNewNode(self.generator.generate())
-            model.setPos(self.x_dist(i), self.y_dist(i), self.height)
+            model.setPos(self.x_dist(i), self.y_dist(i), self.z_dist(i))
             model.setScale(self.scale(i))
             # so that images are correctly displayed on top 
             # of each other
@@ -220,7 +225,7 @@ class PreviewStrip(object):
             self.positions[i].setTexture(self.textures[i])
         
 
-    def _scaleItem(self, i, dir):
+    def _scaleItemInterval(self, i, dir):
         # if dir is negative item is scaled right
         # if dir is positive item is scaled left
         next = (i+dir)%len(self.positions)
@@ -231,7 +236,7 @@ class PreviewStrip(object):
                     scale = self.positions[next].getScale()
         )
        
-    def _positionItem(self, i, dir):
+    def _positionItemInterval(self, i, dir):
         # if dir is negative item is moved right
         # if dir is positive item is moved left 
         next = (i+dir) % len(self.positions)
@@ -249,7 +254,7 @@ class PreviewStrip(object):
         last.setTexture(self.textures[self.head])
         self.positions.insert(0,last)
         
-        self.notifyAll()
+        self.notifyParent()
 
     
     def _adjustRight(self):
@@ -259,18 +264,15 @@ class PreviewStrip(object):
         first.setTexture(self.textures[self.tail])
         self.positions.append(first)
 
-        self.notifyAll()
+        self.notifyParent()
         
     
     def rotateLeft(self):
         parallel = Parallel()
         
-        for i in range(len(self.positions)-1):
-            parallel.append( self._positionItem(i, 1))
-            parallel.append( self._scaleItem(i, 1))
-
-        # last item is moved symetrically so it has its scale preserved
-        parallel.append(self._positionItem(-1,1))
+        for i in range(len(self.positions)):
+            parallel.append( self._positionItemInterval(i, 1))
+            parallel.append( self._scaleItemInterval(i, 1))
         
         self.seq = Sequence(parallel, Func(self._adjustLeft))
         self.seq.start()
@@ -280,11 +282,8 @@ class PreviewStrip(object):
         parallel = Parallel()
         
         for i in range(len(self.positions)):
-            parallel.append( self._positionItem(i, -1))
-            parallel.append( self._scaleItem(i,  -1))
- 
-  
-        parallel.append(self._positionItem(0,-1))
+            parallel.append( self._positionItemInterval(i, -1))
+            parallel.append( self._scaleItemInterval(i,  -1))
 
         self.seq = Sequence(parallel, Func(self._adjustRight))
         self.seq.start()
@@ -293,8 +292,8 @@ class PreviewStrip(object):
         # list is being kept the way that the middle argument in the list is always current
         return self.positions[self.visible/2]
     
-    def notifyAll(self):
-        self.notify[0].notify(self.notify[1:])
+    def notifyParent(self):
+        self.parent.notify(self.args)
             
     def hide(self):
         for item in self.positions:
