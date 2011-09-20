@@ -45,7 +45,7 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
                                           'jump-in'     :actorPath+'-jump-in', 
                                           'jump-out'     :actorPath+'-jump-out', 
                                           #'evade-cw'   :actorPath+'-evade-cw'
-                                          #'evade-ccw'   :actorPath+'-evade-ccw'
+                                          'evade-ccw'   :actorPath+'-evade-ccw'
 
                                         })
         #model was rotated the wrong way in blender.. darn fixing it
@@ -226,7 +226,28 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
         self.fighterinstance.setSpeed(0 ,0)
     
     
+    #---------------------
+    def enterEvadeCCW(self):
+        self.stand()
+        self.fighterinstance.faceOpponent(False)
+        self.fighter.stop()
+        self.fighter.play('evade-ccw')
+        self.fighterinstance.setSpeed(self.cfgData["evade-ccw"]["speedx"],self.cfgData["evade-ccw"]["speedy"])
+        self.transitionTimer= Sequence(Wait(self.fighter.getDuration()), Func(self.inputHandler.pollEvents ) )
+        self.transitionTimer.start()
+
+    def filterEvadeCCW(self,request,args):
+        if self.transitionTimer.getT() > self.transitionTimer.getDuration()-0.1 : 
+            return request
+
+    def exitEvadeCCW(self):
+        self.stand()
+        self.fighterinstance.setSpeed(0,0)
+        self.fighterinstance.faceOpponent(True)
+        self.cancelTransition()
+    
         #---------------------
+        
     def enterJumpIn(self):
         self.fighterinstance.faceOpponent(False)
         self.fighter.stop()

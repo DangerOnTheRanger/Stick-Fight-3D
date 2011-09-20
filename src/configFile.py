@@ -57,7 +57,7 @@ def readCharacter(pathToChar):
                                    "blockeddamage" : float(config.get(attack,"blockeddamage")),
                                    "angle" : float(config.get(attack,"angle")),
                                  } )
-    for move in ["run-in","run-out","jump-in","jump-out"]:
+    for move in ["run-in","run-out","jump-in","jump-out","evade-ccw"]:
         outputDict[move] = dict({"speedx" : float(config.get(move,"speedx")) ,
                                  "speedy" : float(config.get(move,"speedy"))
                                  } )

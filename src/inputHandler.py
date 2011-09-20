@@ -116,8 +116,8 @@ class InputHandler(DirectObject.DirectObject):
         self.permaTriggers.append(StateTrigger(5, "CrouchPunch", [2])) #crouch punch needs crouching *nodnod*
         self.permaTriggers.append(StateTrigger(6, "CrouchKick", [2])) #so does kicking ..
         self.permaTriggers.append(StateTrigger(7, "CrouchDefense", [2, 7])) # 
-        self.permaTriggers.append(StateTrigger(1, "EvadeUp",   [0], eventOrder=[1,1])) #there was some.. really odd bug that added event 1, to the event map of
-        self.permaTriggers.append(StateTrigger(2, "EvadeDown", [0], eventOrder=[2,2])) #this line here.when i did not specify the [0]. i dont know why! so i added 0
+        self.permaTriggers.append(StateTrigger(1, "EvadeCCW",   [0], eventOrder=[1,1])) #there was some.. really odd bug that added event 1, to the event map of
+        self.permaTriggers.append(StateTrigger(2, "EvadeCW", [0], eventOrder=[2,2])) #this line here.when i did not specify the [0]. i dont know why! so i added 0
 
     def setKey(self, eventnum, setOrClear):
         #swap left-right depending on the player side, for the left player,
