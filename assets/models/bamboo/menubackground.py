@@ -18,12 +18,12 @@ def addCard(texture):
     return card
 print 
 
-background = addCard('bamboo-menu-layer-4-alpha-fix.jpg')
+background = addCard('bamboo-menu-layer-4.jpg')
 background.setY( 10)
 background.setScale(6)
 
 for i in range(20):
-    bamboo3 = addCard('bamboo-menu-layer-3-alpha-fix.png')
+    bamboo3 = addCard('bamboo-menu-layer-3.png')
     bamboo3.setTransparency(True)
     bamboo3.setY(7+random()*3)
     bamboo3.setX(uniform(-4,4))
@@ -32,7 +32,7 @@ for i in range(20):
     bamboo3.setScale(6)
     
 for i in range(12):
-    bamboo2 = addCard('bamboo-menu-layer-2-alpha-fix.png')
+    bamboo2 = addCard('bamboo-menu-layer-2.png')
     bamboo2.setTransparency(True)
     bamboo2.setY(4.5+uniform(0,2.5))
     bamboo2.setX(uniform(-4,4))
@@ -52,7 +52,7 @@ for i in range(12):
     ani.loop()
 
 for i in range(7):
-    bamboo1 = addCard('bamboo-menu-layer-1-alpha-fix.png')
+    bamboo1 = addCard('bamboo-menu-layer-1.png')
     bamboo1.setTransparency(True)
     bamboo1.setY(2.0+uniform(0,2))
     bamboo1.setX(uniform(-2,2))
