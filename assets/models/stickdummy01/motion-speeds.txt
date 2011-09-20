@@ -1,5 +1,6 @@
 stickfigure-step 6.15 u/s (25 fps, 26 frames, 6.4 units)
 stickfigure-run 20.23 u/s (25 fps, 21 frames, 17 units)
 stickfigure-side-step 4.41 u/s (25 fps, 17 frames, 3 units)
+stickfigure-side-evasion 3.92 u/s (25 fps, 14 frames, 2.2 units)
 stickfigure-jump-forward 13.54 u/s (25 fps, 25 frames , 13 units)
 stickfigure-jump-backward 13.19 u/s (25 fps, 18 frames , 9.5 units)
