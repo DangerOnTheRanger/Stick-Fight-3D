@@ -72,8 +72,8 @@ for i in range(7):
     ani.loop()
 
 bamboo0 = addCard('bamboo-menu-layer-0.png')
-bamboo0.setY(1.5)
-bamboo0.setX(1)
+bamboo0.setY(1.9)
+bamboo0.setX(1.5)
 bamboo0.setR(4)
 bamboo0.setScale(1.5)
 bamboo0.setTransparency(True)
@@ -82,17 +82,20 @@ dummy = menuNP.attachNewNode("rotate-dummy")
 dummy.setZ(-5)
 bamboo0.wrtReparentTo(dummy)
 h1 = 0
-h2 = h1 + uniform(-.3,.3)
+h2 = h1 + 0.2
 time = uniform(5,9)
 hpr1 = dummy.hprInterval(time, Point3(0, 0, h1), Point3(0, 0, h2),blendType='easeInOut')
 hpr2 = dummy.hprInterval(time, Point3(0, 0, h2), Point3(0, 0, h1),blendType='easeInOut')
 ani = Sequence(hpr1,hpr2)
 ani.loop()
 
-PosInterval1 = base.camera.posInterval(6, Point3(-1, 0, 0),  startPos=Point3(1, 0, 0))
-PosInterval2 = base.camera.posInterval(6, Point3(1, 0, 0),  startPos=Point3(-1, 0, 0))
-#base.disableMouse()
+PosInterval1 = base.camera.posInterval(6, Point3(-1, 0, 0),  startPos=Point3(1, 0, 0),blendType='easeInOut')
+PosInterval2 = base.camera.posInterval(6, Point3(1, 0, 0),  startPos=Point3(-1, 0, 0),blendType='easeInOut')
+base.disableMouse()
+camera.setPos(1,0,0)
 cameramove = Sequence(PosInterval1,PosInterval2)
-cameramove.loop()
+cameramove.start()
+
+
 
 base.run()
