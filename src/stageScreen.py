@@ -1,4 +1,4 @@
-import hud
+from hud import PreviewStrip
 from direct.gui.OnscreenText import OnscreenText
 from panda3d.core import CardMaker,NodePath
 from os import sep
@@ -12,9 +12,11 @@ class StageScreen(DirectObject.DirectObject):
         # inform us to update text and image preview
         
         
-        self.ps = hud.PreviewStrip("../assets/stages" )
+        self.ps = PreviewStrip("../assets/stages" ,-0.7)
+        self.ps.getStripNP().reparentTo(self.stageRoot)
+        
         self.callback = callback
-        # name of the stage will be displyed here
+        # name of the stage will be displayed here
         self.text = OnscreenText("")
         self.text.reparentTo(self.stageRoot)
         self.text.setPos(0,self.ps.height - 0.4)
