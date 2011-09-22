@@ -274,8 +274,8 @@ class PreviewStrip(object):
         for i in range(len(self.positions)):
             parallel.append( self._positionItemInterval(i, 1))
             parallel.append( self._scaleItemInterval(i, 1))
-        
-        self.seq = Sequence(parallel, Func(self._adjustLeft))
+        self._adjustLeft()
+        self.seq = Sequence(parallel)
         self.seq.start()
 
         
@@ -287,8 +287,8 @@ class PreviewStrip(object):
         for i in range(len(self.positions)):
             parallel.append( self._positionItemInterval(i, -1))
             parallel.append( self._scaleItemInterval(i,  -1))
-
-        self.seq = Sequence(parallel, Func(self._adjustRight))
+        self._adjustRight()
+        self.seq = Sequence(parallel)
         self.seq.start()
 
     def current(self):
