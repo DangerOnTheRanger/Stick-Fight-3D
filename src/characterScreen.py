@@ -1,37 +1,42 @@
 from hud import PreviewStrip
 from direct.gui.OnscreenText import OnscreenText
-from panda3d.core import CardMaker
+from panda3d.core import CardMaker , NodePath
 from os import sep
 from configFile import readKeys
+from direct.showbase import DirectObject
 
-
-class CharacterScreen(object):
-    def __init__(self, parent = None):
+class CharacterScreen(DirectObject.DirectObject):
+    def __init__(self, callback = None):
+        self.charRoot = NodePath("characterSelectRoot")
+        
         self.players = [{},{}]
         # heights on which preview strips appear
         heights = [0.7,-0.7]
         # determines separation between previews
         previews = [0.5, -0.5]
-        # parent of the screen, will be notified when
-        # screen does its job
-        self.parent = parent
+
+        self.callback = callback
         self.preview_size = [-0.3,  0.3, -0.3, 0.3]
         self.generator = CardMaker("PreviewMaker") 
         self.generator.setFrame(*self.preview_size)
         self.players_ready = 0
         
         self.vs = OnscreenText("vs")
+        self.vs.reparentTo(self.charRoot)
         
         players = self.players
         for i in range(2):
-            players[i]["strip"] = PreviewStrip("../assets/fighters", def_height = heights[i], parent = [self, i])
+            players[i]["strip"] = PreviewStrip("../assets/fighters", def_height = heights[i])
+            players[i]["strip"].getStripNP().reparentTo(self.charRoot)
             
             players[i]["text"] = OnscreenText("")
+            players[i]["text"].reparentTo(self.charRoot)
             players[i]["text"].setPos(0, players[i]["strip"].height - 0.25)
             
-            players[i]["preview"] = aspect2d.attachNewNode(self.generator.generate())
-            players[i]["preview"].setPos(previews[i],0, 0.0)
+            players[i]["preview"] = self.charRoot.attachNewNode(self.generator.generate())
+            players[i]["preview"].setPos(previews[i],.2, 0.0)
             players[i]["select"] = OnscreenText("ready")
+            players[i]["select"].reparentTo(self.charRoot)
             players[i]["select"].setPos(0, players[i]["strip"].height)
             players[i]["select"].hide()
 
@@ -39,8 +44,25 @@ class CharacterScreen(object):
         self.left = [self.keys[0][1], self.keys[1][2]]
         self.right = [self.keys[0][3], self.keys[1][3]]
         self.confirm = [self.keys[0][4], self.keys[1][4]]
+
+        self.updateText()
+        self.updateImg()
+    
+    def enableInput(self):
+        #map keys of player 0
+        self.accept(self.right[0], self.rotateRight, [0])
+        self.accept(self.left[0], self.rotateLeft, [0])
+        self.accept(self.confirm[0], self.select, [0])
+        #same for player 1
+        self.accept(self.right[1], self.rotateRight, [1])
+        self.accept(self.left[1], self.rotateLeft, [1])
+        self.accept(self.confirm[1], self.select, [1])
+    
+    def disableInput(self):
+        self.ignoreAll()
         
-        self.notify()
+    def getNp(self):
+        return self.charRoot
      
     def updateText(self):
         for i in range(2):
@@ -53,42 +75,22 @@ class CharacterScreen(object):
             self.players[i]["preview"].setTexture(t)
         
     def rotateLeft(self, num):
-        for key in [self.right[num],self.left[num]]:
-            base.ignore(key)
         self.players[num]["strip"].rotateLeft()
         
     def rotateRight(self, num):
-        for key in [self.right[num],self.left[num]]:
-            base.ignore(key)
         self.players[num]["strip"].rotateRight()
         
     def select(self, num):
         self.players[num]["select"].show()
         for key in [self.right[num], self.left[num], self.confirm[num]]:
-            base.ignore(key)
+            self.ignore(key)
         self.players_ready += 1    
-        if self.parent and self.players_ready == 2:
-            self.hide()
-            self.parent.notify()
+        if self.callback and self.players_ready == 2:
+            #self.hide()
+            self.callback()
             self.players[0]["select"].hide()
             self.players[1]["select"].hide()
 
-    def notify(self, arg = None):
-        # if arg is None that means that we notify ourselves
-        # if it is not None it means that one of our strips notifies us
-        self.updateText()
-        self.updateImg()
-        if arg:
-            arg = arg[0]
-            base.acceptOnce(self.right[arg], self.rotateRight, [arg])
-            base.acceptOnce(self.left[arg], self.rotateLeft, [arg])
-        else:
-            for key in self.right:
-                base.acceptOnce(key, self.rotateRight, [self.right.index(key)])
-            for key in self.left:
-                base.acceptOnce(key, self.rotateLeft, [self.left.index(key)])
-            for key in self.confirm:
-                base.acceptOnce(key, self.select, [self.confirm.index(key)])
     
     def hide(self):
         for i in range(2):
@@ -98,7 +100,7 @@ class CharacterScreen(object):
             
         self.vs.hide()
         for key in self.left+self.right+self.confirm:
-            base.ignore(key)
+            self.ignore(key)
     
     def show(self):
         for i in range(2):
@@ -106,7 +108,6 @@ class CharacterScreen(object):
             self.players[i]["preview"].show()
             self.players[i]["strip"].show()
         self.vs.show()
-        self.notify()
         
     def getPlayers(self):
         players = []

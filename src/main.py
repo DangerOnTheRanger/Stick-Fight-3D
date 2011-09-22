@@ -1,11 +1,11 @@
 from direct.showbase.ShowBase import ShowBase
-from match import Match
-from stageScreen import StageScreen
-from characterScreen import CharacterScreen
+from menu import Menu
 base = ShowBase()
 
 class Game(object):
     def __init__(self):
+        self.menu = Menu()
+    """
         self.screens = []
         self.i = 0
         self.screens.append(StageScreen(parent = self))
@@ -26,7 +26,7 @@ class Game(object):
         else:
             self.screens[self.i].show()
             self.i += 1
-        
+     """   
 
 g = Game()
 

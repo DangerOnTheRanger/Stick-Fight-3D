@@ -1,19 +1,22 @@
 import hud
 from direct.gui.OnscreenText import OnscreenText
-from panda3d.core import CardMaker
+from panda3d.core import CardMaker,NodePath
 from os import sep
 from configFile import readKeys
+from direct.showbase import DirectObject
 
-class StageScreen(object):
-    def __init__(self, parent = None):
+class StageScreen(DirectObject.DirectObject):
+    def __init__(self, callback = None):
+        self.stageRoot = NodePath("stageSelectRoot")
         # we are sending the preview strip reference to us so it can
         # inform us to update text and image preview
-        self.ps = hud.PreviewStrip("../assets/stages", parent = [self])
-        # parent of the screen, will be notified when
-        # screen does its job
-        self.parent = parent
+        
+        
+        self.ps = hud.PreviewStrip("../assets/stages" )
+        self.callback = callback
         # name of the stage will be displyed here
         self.text = OnscreenText("")
+        self.text.reparentTo(self.stageRoot)
         self.text.setPos(0,self.ps.height - 0.4)
         
         self.preview_size = [-0.5,  0.5, -0.5, 0.5]
@@ -21,7 +24,7 @@ class StageScreen(object):
         self.generator = CardMaker("PreviewMaker") 
         self.generator.setFrame(*self.preview_size)
         
-        self.preview = aspect2d.attachNewNode(self.generator.generate())
+        self.preview = self.stageRoot.attachNewNode(self.generator.generate())
         self.preview.setPos(0,0, 0.4)
         # keys are read so that the first in the pair is from player 1
         # and second from the player 2, so that they both can decide
@@ -31,70 +34,55 @@ class StageScreen(object):
         self.select = [self.keys[0][4], self.keys[1][4]]
         
         self.ready = OnscreenText("ready")
+        self.ready.reparentTo(self.stageRoot)
         self.ready.setPos(0,self.ps.height)
         # will be shown when players selected the stage
         self.ready.hide()
         # we notify ourselves to enable the key input and update text
         # and preview
-        self.notify()
+        
+        self.updateText()
+        self.updateImg() 
+        
+        self.ignoreAll()
+    
+    def enableInput(self):
+        self.accept( self.left[0], self.rotateLeft ) 
+        self.accept( self.left[1], self.rotateLeft ) 
+        self.accept( self.right[0], self.rotateRight ) 
+        self.accept( self.right[1], self.rotateRight ) 
+        self.accept( self.select[0], self.callback)
+        self.accept( self.select[1], self.callback)
+    
+    def disableInput(self):
+        self.ignoreAll()
+    
+    def getNp(self):
+        return self.stageRoot 
      
     def updateText(self):
         t = str(self.ps.current().getTexture().getFilename())
         self.text["text"] = t.split(sep)[-2] 
-        
+     
     def updateImg(self):
         self.preview.setTexture(self.ps.current().getTexture())
+
+    def rotateRight(self):
+        self.ps.rotateRight()
+        self.updateText()
+        self.updateImg()    
         
     def rotateLeft(self):
-        # ignore all keys so that nothing get pressed while strip rotates
-        # strip will notify us when it finishes and we will enable it again
-        # in notify()
-        for key in self.right + self.left:
-            base.ignore(key)
-        
         self.ps.rotateLeft()
-        
-    def rotateRight(self):
-        # same as above
-        for key in self.right + self.left:
-            base.ignore(key)
-
-        self.ps.rotateRight()
-        
-    def sel(self):
-        # short for selection, used when player use punch key
-        # we display ready over image
-        self.ready.show()
-        # discarding functions assigne to to players keys
-        for key in self.left+self.right+self.select:
-            base.ignore(key)
-        # we hide ourselves
-        if self.parent:
-            self.hide()
-            
-            self.parent.notify()
-            self.ready.hide()
-
-        
-    def notify(self, arg = None):
-        # arg is just for compatibility issues here
         self.updateText()
         self.updateImg()
-        
-        for key in self.right:
-            base.acceptOnce(key, self.rotateRight)
-        for key in self.left:
-            base.acceptOnce(key, self.rotateLeft)
-        for key in self.select:
-            base.acceptOnce(key, self.sel)    
-
     
     def hide(self):
         self.text.hide()
         self.preview.hide()
         self.ps.hide()
         for key in self.left+self.right+self.select:
-            base.ignore(key)
+            self.ignore(key)
     
     def show(self):
         self.text.show()

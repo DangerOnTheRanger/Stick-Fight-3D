@@ -3,7 +3,6 @@ from direct.actor.Actor import Actor
 
 from direct.interval.MetaInterval import Sequence,Parallel
 from direct.interval.FunctionInterval import Func,Wait
-from direct.interval.SoundInterval import SoundInterval
 
 from panda3d.core import BitMask32
 from inputHandler import InputHandler

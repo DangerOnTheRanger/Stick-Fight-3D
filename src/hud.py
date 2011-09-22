@@ -1,5 +1,5 @@
 from direct.gui.DirectGui import *
-from panda3d.core import TextNode, CardMaker
+from panda3d.core import TextNode, CardMaker , NodePath 
 from direct.task import Task
 from direct.interval.LerpInterval import LerpFunc
 from direct.interval.IntervalGlobal import *
@@ -155,13 +155,13 @@ class AnimatedText(object):
     
 class PreviewStrip(object):
     
-    def __init__(self, catalog, parent = None, def_height = -0.5):
+    def __init__(self, catalog, def_height = -0.5):
+        self.stripRoot = NodePath('stripRoot')
         self.height = def_height
         self.catalog = catalog
         
+        self.seq = Sequence()
         
-        self.parent = parent[0]
-        self.args = parent[1:]
         self.preview_size = [-0.1,  0.1, -0.1, 0.1]
         
         self.generator = CardMaker("PreviewMaker") 
@@ -181,6 +181,9 @@ class PreviewStrip(object):
         
         self.head = 0
         self.tail = self.visible - 1
+    
+    def getStripNP(self):
+        return self.stripRoot
         
     def loadPreviewImages(self):
         files = listdir(self.catalog)
@@ -211,7 +214,7 @@ class PreviewStrip(object):
     
     def preparePositions(self):
         for i in range(0,self.visible):
-            model = aspect2d.attachNewNode(self.generator.generate())
+            model = self.stripRoot.attachNewNode(self.generator.generate())
             model.setPos(self.x_dist(i), self.y_dist(i), self.z_dist(i))
             model.setScale(self.scale(i))
             # so that images are correctly displayed on top 
@@ -253,8 +256,6 @@ class PreviewStrip(object):
         self.tail = (self.tail - 1) % len(self.textures)
         last.setTexture(self.textures[self.head])
         self.positions.insert(0,last)
-        
-        self.notifyParent()
 
     
     def _adjustRight(self):
@@ -263,11 +264,11 @@ class PreviewStrip(object):
         self.tail = (self.tail + 1) % len(self.textures)
         first.setTexture(self.textures[self.tail])
         self.positions.append(first)
-
-        self.notifyParent()
         
     
     def rotateLeft(self):
+        if self.seq.isPlaying():
+            return
         parallel = Parallel()
         
         for i in range(len(self.positions)):
@@ -279,6 +280,8 @@ class PreviewStrip(object):
 
         
     def rotateRight(self):
+        if self.seq.isPlaying():
+            return
         parallel = Parallel()
         
         for i in range(len(self.positions)):
@@ -291,9 +294,6 @@ class PreviewStrip(object):
     def current(self):
         # list is being kept the way that the middle argument in the list is always current
         return self.positions[self.visible/2]
-    
-    def notifyParent(self):
-        self.parent.notify(self.args)
             
     def hide(self):
         for item in self.positions:
