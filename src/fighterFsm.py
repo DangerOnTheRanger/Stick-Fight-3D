@@ -117,11 +117,13 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
     #-----------
     def cancelTransition(self,task=0):
         if self.transitionTimer:
+            self.transitionTimer.clearIntervals() #trying to fix a rarely occuring bug that triggers a state change during the cancelTransition call
             self.transitionTimer.pause()
             self.transitionTimer
     #-----------
     def cancelActive(self,task=0):
         if self.activeTimer:
+            self.activeTimer.clearIntervals()
             self.activeTimer.pause()
             self.activeTimer = None
     

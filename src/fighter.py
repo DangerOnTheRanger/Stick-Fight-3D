@@ -50,7 +50,7 @@ class Fighter():
             self.fighterNP.setX(5)
         else:
             self.fighterNP.setX(-5)
-            
+        self.fighterNP.setY(0)
         taskMgr.add(self.__playertask__, "player"+str(self.side))
     
     def setStatusBitMask(self,bitmask):
