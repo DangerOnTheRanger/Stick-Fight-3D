@@ -5,7 +5,7 @@ from direct.interval.MetaInterval import Sequence,Parallel
 from direct.interval.FunctionInterval import Func,Wait
 
 from panda3d.core import BitMask32
-from inputHandler import InputHandler
+
 from playerSoundFX import PlayerSoundFX
 from configFile import readCharacter
 
@@ -20,10 +20,12 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
                     #bitmasks are 0 for on the floor, 1 for legs, 2 for torso&head , 
                     #3 for vertical down (like hammer smackdown, bodyslam form the back of a horse, meteroids...)
         
-    def setup(self,FighterClassInstance,characterPath,side):
-        self.inputHandler = InputHandler(self,side)
+    def __init__(self,FighterClassInstance,characterPath):
+        FSM.__init__(self,"fighterFsm") 
         path = characterPath
         self.cfgData = readCharacter(path)
+        self.fighterinstance = FighterClassInstance
+        
         actorPath = path+self.cfgData["actorFile"]
         self.fighter = Actor(actorPath,
                                         { 
@@ -53,9 +55,7 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
         self.fighter.reparentTo(render)
         self.fighter.setBlend(frameBlend=True)
         
-        self.fighter.setPlayRate(4.0, 'step')
-        self.fighterinstance = FighterClassInstance
-        self.fighter.reparentTo(self.fighterinstance.getNP())
+        self.fighter.setPlayRate(4.0, 'step') 
         self.activeTimer = None #we will store our active sequence,parallel or interval here, so we can easily clean it up 
         self.transitionTimer = None #usually holds a sequence like sequence(Wait(time),self.request('nextstate'))
         
@@ -64,26 +64,29 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
                                  
         self.request("Idle")
     
-    def attackSeq(self,data):
+    def getNP(self):
+        return self.fighter
+    
+    def _attackSeq(self,data):
         attackMask = BitMask32()
         attackMask.setBit(data["attackbit"])
         return Sequence( Wait(data["delay"]),
-                         Func(self.attack,attackMask,data["range"],data["damage"], data["blockeddamage"],data["angle"])
+                         Func(self._attack,attackMask,data["range"],data["damage"], data["blockeddamage"],data["angle"])
                        )
         
-    def setSBM(self,bitmask):
+    def _setSBM(self,bitmask):
         """
         yet another convenience function, sets the status bit mask
         """
         self.fighterinstance.setStatusBitMask(bitmask)
         
-    def setDBM(self,bitmask):
+    def _setDBM(self,bitmask):
         """
         aaand yet another convenience function, sets the defense bit mask
         """
         self.fighterinstance.setDefenseBitMask(bitmask)    
             
-    def attack(self,attackBitMask,attackrange,damageHit,damageDodge=0,angle=30):
+    def _attack(self,attackBitMask,attackrange,damageHit,damageDodge=0,angle=30):
         """
         more convenience function, this one attacks the opponent
         """
@@ -103,25 +106,25 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
             #we still miss the hit
             self.sounds.playMiss()
     #----------
-    def stand(self):
+    def _stand(self):
         newBitMask = BitMask32()
         newBitMask.setRange(0,4)
-        self.setSBM(newBitMask)
+        self._setSBM(newBitMask)
     #-----------
-    def crouch(self):
+    def _crouch(self):
         newBitMask = BitMask32()
         newBitMask.setRange(0,2)
         newBitMask.setBit(3)
-        self.setSBM(newBitMask)
+        self._setSBM(newBitMask)
         
     #-----------
-    def cancelTransition(self,task=0):
+    def _cancelTransition(self,task=0):
         if self.transitionTimer:
             self.transitionTimer.clearIntervals() #trying to fix a rarely occuring bug that triggers a state change during the cancelTransition call
             self.transitionTimer.pause()
             self.transitionTimer
     #-----------
-    def cancelActive(self,task=0):
+    def _cancelActive(self,task=0):
         if self.activeTimer:
             self.activeTimer.clearIntervals()
             self.activeTimer.pause()
@@ -129,9 +132,9 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
     
     #----------
     def enterKo(self):
-        taskMgr.doMethodLater(0.2,self.cancelActive,"cancelActive") #timer to allow double-KO
+        taskMgr.doMethodLater(0.2,self._cancelActive,"cancelActive") #timer to allow double-KO
         newBitMask = BitMask32()
-        self.setSBM(newBitMask)
+        self._setSBM(newBitMask)
         self.fighter.play("ko")
     def filterKo(self,request,args):
         #this blocks the fsm. but will be forced to idle by the fighter class
@@ -141,10 +144,10 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
           
     #-----------
     def enterHit(self):
-        self.stand()
+        self._stand()
         self.fighter.play("hit")
         self.fighterinstance.setSpeed(-1,0)
-        self.transitionTimer= Sequence(Wait(self.fighter.getDuration()), Func(self.inputHandler.pollEvents ) )
+        self.transitionTimer= Sequence(Wait(self.fighter.getDuration()), Func(self.fighterinstance.updateState ) )
         self.transitionTimer.start()
     
     def filterHit(self,request,options):
@@ -153,16 +156,16 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
    
     def exitHit(self):
         self.fighterinstance.setSpeed(0,0)
-        self.cancelTransition()
-        self.cancelActive()
+        self._cancelTransition()
+        self._cancelActive()
         
     #-------------------------
 
     def enterCrouchHit(self):
-        self.crouch()
+        self._crouch()
         self.fighter.play("crouch-hit")
         self.fighterinstance.setSpeed(-1,0)
-        self.transitionTimer= Sequence(Wait(self.fighter.getDuration()), Func(self.inputHandler.pollEvents ) )
+        self.transitionTimer= Sequence(Wait(self.fighter.getDuration()), Func(self.fighterinstance.updateState ) )
         self.transitionTimer.start()
     
     def filterCrouchHit(self,request,options):
@@ -171,17 +174,17 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
    
     def exitCrouchHit(self):
         self.fighterinstance.setSpeed(0,0)
-        self.cancelTransition()
-        self.cancelActive() 
+        self._cancelTransition()
+        self._cancelActive() 
 
     #---------
     
     def enterDefense(self):
-        self.stand()
+        self._stand()
         newBitMask = BitMask32()
         #newBitMask.setBit(1)
         newBitMask.setBit(2)
-        self.setDBM(newBitMask)
+        self._setDBM(newBitMask)
         self.fighter.stop()
         self.fighter.loop('defense')
 
@@ -191,14 +194,14 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
 
     def exitDefense(self):
         newBitMask = BitMask32()
-        self.setDBM(newBitMask)
-        self.cancelTransition()
-        self.cancelActive()
+        self._setDBM(newBitMask)
+        self._cancelTransition()
+        self._cancelActive()
 
     #---------
 
     def enterRunIn(self):
-        self.stand()
+        self._stand()
         self.fighter.loop("run-in")
         
         self.fighterinstance.setSpeed(self.cfgData["run-in"]["speedx"],self.cfgData["run-in"]["speedy"])
@@ -214,7 +217,7 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
     #---------------------
      
     def enterRunOut(self):
-        self.stand()
+        self._stand()
         self.fighter.loop("run-out")
         self.fighterinstance.setSpeed(self.cfgData["run-out"]["speedx"],self.cfgData["run-out"]["speedy"])
         
@@ -229,12 +232,12 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
     
     #---------------------
     def enterEvadeCCW(self):
-        self.stand()
+        self._stand()
         self.fighterinstance.faceOpponent(False)
         self.fighter.stop()
         self.fighter.play('evade-ccw')
         self.fighterinstance.setSpeed(self.cfgData["evade-ccw"]["speedx"],self.cfgData["evade-ccw"]["speedy"])
-        self.transitionTimer= Sequence(Wait(self.fighter.getDuration()), Func(self.inputHandler.pollEvents ) )
+        self.transitionTimer= Sequence(Wait(self.fighter.getDuration()), Func(self.fighterinstance.updateState ) )
         self.transitionTimer.start()
 
     def filterEvadeCCW(self,request,args):
@@ -242,10 +245,10 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
             return request
 
     def exitEvadeCCW(self):
-        self.stand()
+        self._stand()
         self.fighterinstance.setSpeed(0,0)
         self.fighterinstance.faceOpponent(True)
-        self.cancelTransition()
+        self._cancelTransition()
     
         #---------------------
         
@@ -258,9 +261,9 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
         #till then. jump all the time
         newBitMask = BitMask32()
         newBitMask.setRange(2,3)
-        self.setSBM(newBitMask)
+        self._setSBM(newBitMask)
         
-        self.transitionTimer= Sequence(Wait(self.fighter.getDuration()), Func(self.inputHandler.pollEvents ) )
+        self.transitionTimer= Sequence(Wait(self.fighter.getDuration()), Func(self.fighterinstance.updateState ) )
         self.transitionTimer.start()
 
     def filterJumpIn(self,request,args):
@@ -268,10 +271,10 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
             return request
 
     def exitJumpIn(self):
-        self.stand()
+        self._stand()
         self.fighterinstance.setSpeed(0,0)
         self.fighterinstance.faceOpponent(True)
-        self.cancelTransition()
+        self._cancelTransition()
         
      
         #---------------------
@@ -284,9 +287,9 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
         #till then. jump all the time
         newBitMask = BitMask32()
         newBitMask.setRange(2,3)
-        self.setSBM(newBitMask)
+        self._setSBM(newBitMask)
         
-        self.transitionTimer= Sequence(Wait(self.fighter.getDuration()), Func(self.inputHandler.pollEvents ) )
+        self.transitionTimer= Sequence(Wait(self.fighter.getDuration()), Func(self.fighterinstance.updateState ) )
         self.transitionTimer.start()
 
     def filterJumpOut(self,request,args):
@@ -294,10 +297,10 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
             return request
 
     def exitJumpOut(self):
-        self.stand()
+        self._stand()
         self.fighterinstance.setSpeed(0,0)
         self.fighterinstance.faceOpponent(True)
-        self.cancelTransition()   
+        self._cancelTransition()   
         
     #---------------------
     def enterJump(self):
@@ -309,9 +312,9 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
         newBitMask = BitMask32()
         newBitMask.setRange(2,3)
         #newBitMask.setBit(3)
-        self.setSBM(newBitMask)
+        self._setSBM(newBitMask)
         
-        self.transitionTimer= Sequence(Wait(self.fighter.getDuration()), Func(self.inputHandler.pollEvents ) )
+        self.transitionTimer= Sequence(Wait(self.fighter.getDuration()), Func(self.fighterinstance.updateState ) )
         self.transitionTimer.start()
 
     def filterJump(self,request,args):
@@ -322,17 +325,17 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
             return request
 
     def exitJump(self):
-        self.stand()
+        self._stand()
         self.fighterinstance.faceOpponent(True)
-        self.cancelTransition()
+        self._cancelTransition()
 
     #------------
     
     def enterIdle(self):
         #self.fighterinstance.setSpeed(0,0)
-        self.stand()
+        self._stand()
         self.fighter.loop("idle")
-        Func(self.inputHandler.pollEvents).start() #slightly hacky but we cant call that WITHIN the transition of entering idle. so it will be called next frame.
+        Func(self.fighterinstance.updateState).start() #slightly hacky but we cant call that WITHIN the transition of entering idle. so it will be called next frame.
         #doesnt look logic but saves craploads of uncool code, trust me
     
     def filterIdle(self,request,options):
@@ -341,17 +344,17 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
         
     def exitIdle(self):
         #self.fighterinstance.setSpeed(0,0) #cant hurt
-        self.cancelTransition()
-        self.cancelActive()
+        self._cancelTransition()
+        self._cancelActive()
         
         
     #------------
     
     def enterCrouch(self):
-        self.crouch()
+        self._crouch()
         #self.fighterinstance.setSpeed(0,0)
         self.fighter.loop("crouch")
-        #Func(self.inputHandler.pollEvents).start() #slightly hacky but we cant call that WITHIN the transition of entering idle. so it will be called next frame.
+        #Func(self.fighterinstance.updateState).start() #slightly hacky but we cant call that WITHIN the transition of entering idle. so it will be called next frame.
         #doesnt look logic but saves craploads of uncool code, trust me
     
     def filterCrouch(self,request,options):
@@ -365,16 +368,16 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
      #---------------
     
     def enterCrouchPunch(self):
-        self.crouch()
+        self._crouch()
         self.fighterinstance.faceOpponent(False)
         self.fighter.stop()
         self.fighter.play('crouch-punch')
-        self.transitionTimer= Sequence(Wait(self.fighter.getDuration()), Func(self.inputHandler.pollEvents ) )
+        self.transitionTimer= Sequence(Wait(self.fighter.getDuration()), Func(self.fighterinstance.updateState ) )
         self.transitionTimer.start() 
         
         
         data = self.cfgData["crouch-punch"]
-        self.activeTimer = self.attackSeq(data)
+        self.activeTimer = self._attackSeq(data)
         self.activeTimer.start()
 
 
@@ -384,20 +387,20 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
 
     def exitCrouchPunch(self):
         self.fighterinstance.faceOpponent(True)
-        self.cancelTransition()
-        self.cancelActive()
+        self._cancelTransition()
+        self._cancelActive()
     #---------------
     
     def enterCrouchKick(self):
-        self.crouch()
+        self._crouch()
         self.fighterinstance.faceOpponent(False)
         self.fighter.stop()
         self.fighter.play('crouch-kick')
-        self.transitionTimer= Sequence(Wait(self.fighter.getDuration()), Func(self.inputHandler.pollEvents ) )
+        self.transitionTimer= Sequence(Wait(self.fighter.getDuration()), Func(self.fighterinstance.updateState ) )
         self.transitionTimer.start() 
         
         data = self.cfgData["crouch-kick"]
-        self.activeTimer = self.attackSeq(data)
+        self.activeTimer = self._attackSeq(data)
         self.activeTimer.start()
 
 
@@ -407,18 +410,18 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
 
     def exitCrouchKick(self):
         self.fighterinstance.faceOpponent(True)
-        self.cancelTransition()
-        self.cancelActive()
+        self._cancelTransition()
+        self._cancelActive()
  #-------------------------
      
 
 
     def enterCrouchDefense(self):
-        self.crouch()
+        self._crouch()
         newBitMask = BitMask32()
         newBitMask.setBit(1)
         #newBitMask.setBit(2)
-        self.setDBM(newBitMask)
+        self._setDBM(newBitMask)
         self.fighter.stop()
         self.fighter.loop('crouch-defense')
 
@@ -428,22 +431,22 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
 
     def exitCrouchDefense(self):
         newBitMask = BitMask32()
-        self.setDBM(newBitMask)
-        self.cancelTransition()
-        self.cancelActive()
+        self._setDBM(newBitMask)
+        self._cancelTransition()
+        self._cancelActive()
 
     #---------------
     
     def enterPunch(self):
-        self.stand()
+        self._stand()
         self.fighterinstance.faceOpponent(False)
         self.fighter.stop()
         self.fighter.play('punch')
-        self.transitionTimer= Sequence(Wait(self.fighter.getDuration()), Func(self.inputHandler.pollEvents ) )
+        self.transitionTimer= Sequence(Wait(self.fighter.getDuration()), Func(self.fighterinstance.updateState ) )
         self.transitionTimer.start() 
         
         data = self.cfgData["punch"]
-        self.activeTimer = self.attackSeq(data)
+        self.activeTimer = self._attackSeq(data)
         self.activeTimer.start()
 
 
@@ -453,12 +456,12 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
 
     def exitPunch(self):
         self.fighterinstance.faceOpponent(True)
-        self.cancelTransition()
-        self.cancelActive()
+        self._cancelTransition()
+        self._cancelActive()
 
     #-------------
     def enterKick(self):
-        self.stand()
+        self._stand()
         self.fighterinstance.faceOpponent(False)
         self.fighter.stop()
         self.fighter.play('kick')
@@ -466,7 +469,7 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
         self.transitionTimer.start()
         
         data = self.cfgData["kick"]
-        self.activeTimer = self.attackSeq(data)
+        self.activeTimer = self._attackSeq(data)
         self.activeTimer.start()
 
     def filterKick(self,request,args):
@@ -475,8 +478,8 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
 
     def exitKick(self):
         self.fighterinstance.faceOpponent(True)
-        self.cancelTransition()
-        self.cancelActive()
+        self._cancelTransition()
+        self._cancelActive()
   
     
     #----------------

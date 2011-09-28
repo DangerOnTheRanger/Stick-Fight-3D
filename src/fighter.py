@@ -1,13 +1,19 @@
 from panda3d.core import BitMask32 ,  CollisionTraverser ,CollisionNode, CollisionRay , CollisionHandlerQueue , Vec3
 from hud import PlayerHud
 from fighterFsm import FighterFsm
+from inputHandler import InputHandler
 
 class Fighter():
     def __init__(self,characterPath , callOnDeath , side , name = None):
         #side indicates if the player is on the left or right side.
-        #TODO: add collision tests against floor and ring-out geometry in the arena, 
+        #TODO: add collision tests against ring-out geometry in the arena, 
+        
+
+        self.fsm = FighterFsm(self,characterPath)    
+        self.inputHandler = InputHandler(self.fsm,side)
         
         self.side = side
+        
         self.wins = 0 #counting won rounds, a double-ko/draw counts as win for both.
         self.faceOpp = True  #looking at opponent
         self.callOnDeath = callOnDeath
@@ -18,7 +24,9 @@ class Fighter():
     
         if not name:
             name = "player"+str(1+bool(side))
-            
+        
+        self.healthBar = PlayerHud(side, name )
+          
         self.fighterNP = render.attachNewNode(name)
         self.collTrav = CollisionTraverser(name)
         fromObject = self.fighterNP.attachNewNode(CollisionNode('colNode'+name))
@@ -28,15 +36,18 @@ class Fighter():
         self.queue = CollisionHandlerQueue()
         self.collTrav.addCollider(fromObject, self.queue)
         
+        self.fsm.getNP().reparentTo(self.fighterNP)
         #fromObject.show() #more debug collision visuals
-        #self.collTrav.showCollisions(render) #debug visuals for collision
-        
-        #input handler remains in the Fighter, could aswell go in fighterfsm but i moved it away from there. at will.
-        self.fsm = FighterFsm(name) 
-        self.fsm.setup(self,characterPath,self.side) 
-        self.healthBar = PlayerHud(side, name )
+        #self.collTrav.showCollisions(render) #debug visuals for collision     
         self.prepareFighter()
-             
+   
+   
+    def updateState(self,newState = None):
+        if newState:
+            if "enter" + state in dir(self.fsm):
+                self.fsm.forceTransition(newState)
+        else:
+            self.inputHandler.pollEvents()          
         
     def prepareFighter(self):
         taskMgr.remove("player"+str(self.side))
@@ -51,7 +62,7 @@ class Fighter():
         else:
             self.fighterNP.setX(-5)
         self.fighterNP.setY(0)
-        taskMgr.add(self.__playertask__, "player"+str(self.side))
+        taskMgr.add(self._playertask, "player"+str(self.side))
     
     def setStatusBitMask(self,bitmask):
         self.statusBitMask = bitmask
@@ -83,7 +94,7 @@ class Fighter():
         attackstatus = self.opponent.getAttacked(attackBitMask,attackrange,damageHit,damageDodge,angle)
         return attackstatus
     
-    def testHit(self,node1,node2,threshold=30, dist = 1):  #node1 which looks for a target , node2 is the target , threshold is the max-attack-angle, dist the dist
+    def _testHit(self,node1,node2,threshold=30, dist = 1):  #node1 which looks for a target , node2 is the target , threshold is the max-attack-angle, dist the dist
           dirVec = node1.getRelativePoint(node2,Vec3(0,0,0))
           dirVec = Vec3(dirVec[0],dirVec[1],dirVec[2])
           
@@ -104,7 +115,7 @@ class Fighter():
             return 4 #player is ko already
             
 
-        if  not self.testHit(self.opponent.getNP(),self.fighterNP  ,angle,attackrange )  : #instead of 0, a sligtly positive values makes thinks look better.
+        if  not self._testHit(self.opponent.getNP(),self.fighterNP  ,angle,attackrange )  : #instead of 0, a sligtly positive values makes thinks look better.
             #attack misses due to out of range.
             return 0 
 
@@ -138,7 +149,7 @@ class Fighter():
     def faceOpponent(self,facing):
         self.faceOpp = facing #true if yuo look at the other player (usualy true unless attacking), so you can dodge an attack by evading.
     
-    def __playertask__(self,task):
+    def _playertask(self,task):
         
         oldpos = self.fighterNP.getPos()
         

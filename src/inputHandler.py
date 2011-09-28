@@ -48,7 +48,9 @@ class StateTrigger(object):
         self.eventMap = set(eventMap) #stores all key-conditions that must be met in order to trigger
         self.eventMap.add(self.trigger) #adds the trigger event in case someone forgot it,
         self.eventCount = len(self.eventMap) #store the length of the event map. higher numbers will be tested first for matching keys.
-        self.state = state #the state to request from the fsm if the everything matches
+        if type(state) == str:
+            state = [state,state] #in case only one event is specified, copy it for both player-positions
+        self.state = state #the state to request from the fsm if the everything matches . a list with 2 entries, for when the player stands left or right on the screen
         self.eventOrder = eventOrder #for the future, used to test for sequences of button smashes, so you have to get the right buttons in the right order.
         self.eventOrderCount = len(self.eventOrder) # 2nd sort parameter, long sequences will be tested befor short ones... some timers .. should count the last input
         self.lastInput = None #for the future, used to store the time-stamp of the last keypress so we can cancel old combos, and not trigger to early on long ones
@@ -105,32 +107,22 @@ class InputHandler(DirectObject.DirectObject):
         self.permaTriggers = [] #contains the "permanent" mapped inputs, cant be deleted by the fsm.
 
         self.permaTriggers.append(StateTrigger(1, "Jump", [-2])) #-2 means no jumping when the user presses down.
-        self.permaTriggers.append(StateTrigger(1, "JumpIn", [-2, 4]))
-        self.permaTriggers.append(StateTrigger(1, "JumpOut", [-2, 3]))
+        self.permaTriggers.append(StateTrigger(1, ["JumpIn" ,"JumpOut" ], [-2, 4]))
+        self.permaTriggers.append(StateTrigger(1, ["JumpOut","JumpIn"  ], [-2, 3]))
         self.permaTriggers.append(StateTrigger(0, "Crouch", [2]))  #0 means, no special trigger key
-        self.permaTriggers.append(StateTrigger(0, "RunIn", [4]))
-        self.permaTriggers.append(StateTrigger(0, "RunOut", [3]))
+        self.permaTriggers.append(StateTrigger(0, ["RunIn" , "RunOut"], [4]))
+        self.permaTriggers.append(StateTrigger(0, ["RunOut", "RunIn" ], [3]))
         self.permaTriggers.append(StateTrigger(5, "Punch", [-2])) #ne regular punch when crouching
         self.permaTriggers.append(StateTrigger(7, "Defense", [-2, 7])) # turn the first 7 (trigger key) to 0 if you like the make attack->defense with static buttons
         self.permaTriggers.append(StateTrigger(6, "Kick", [-2]))
         self.permaTriggers.append(StateTrigger(5, "CrouchPunch", [2])) #crouch punch needs crouching *nodnod*
         self.permaTriggers.append(StateTrigger(6, "CrouchKick", [2])) #so does kicking ..
         self.permaTriggers.append(StateTrigger(7, "CrouchDefense", [2, 7])) # 
-        self.permaTriggers.append(StateTrigger(1, "EvadeCCW",   [0], eventOrder=[1,1])) #there was some.. really odd bug that added event 1, to the event map of
-        self.permaTriggers.append(StateTrigger(2, "EvadeCW", [0], eventOrder=[2,2])) #this line here.when i did not specify the [0]. i dont know why! so i added 0
+        self.permaTriggers.append(StateTrigger(1, ["EvadeCW","EvadeCCW"], [0], eventOrder=[1,1])) #there was some.. really odd bug that added event 1, to the event map of
+        self.permaTriggers.append(StateTrigger(2, ["EvadeCCW","EvadeCW"], [0], eventOrder=[2,2])) #this line here.when i did not specify the [0]. so i added 0
 
     def setKey(self, eventnum, setOrClear):
-        #swap left-right depending on the player side, for the left player,
-        #left will be left. something in my head tells me this is not clever, but it works.
-        #TODO: have an eye on the side-swapping.. it might fight back and
-        #jump at you from behind, tearing your spine out and eat your balls. will happen. promise.
-        
-        if self.side and eventnum == 3:
-            eventnum = 4
-        elif self.side and eventnum == 4:
-            eventnum = 3
-            
-        
+       
         if setOrClear:
             self.keystatus.add(eventnum)
             self.keystatus.discard(-eventnum)
@@ -147,6 +139,9 @@ class InputHandler(DirectObject.DirectObject):
 
         self.pollEvents(eventnum)
 
+    def setSide(self,side):
+        self.side = side
+    
     def _getPermaTriggers(self):
         return sorted(
                       self.permaTriggers,
@@ -156,7 +151,8 @@ class InputHandler(DirectObject.DirectObject):
     def _triggerKeyMatchesEventNum(self, eventnr, trigger):
         return trigger.trigger and trigger.trigger == eventnr or trigger.trigger == 0
 
-    def requestState(self,state="Idle"):
+    def requestState(self,state=["Idle","Idle"]):
+        state = state[self.side]
         if "enter" + state in dir(self.fsm):
             if self.fsm.state:
                 self.fsm.request(state)
