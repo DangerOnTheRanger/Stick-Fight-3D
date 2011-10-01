@@ -11,7 +11,7 @@ class CharacterScreen(DirectObject.DirectObject):
         
         self.players = [{},{}]
         # heights on which preview strips appear
-        heights = [0.7,-0.7]
+        heights = [0.8,-0.8]
         # determines separation between previews
         previews = [0.5, -0.5]
 
@@ -31,7 +31,7 @@ class CharacterScreen(DirectObject.DirectObject):
             
             players[i]["text"] = OnscreenText("")
             players[i]["text"].reparentTo(self.charRoot)
-            players[i]["text"].setPos(0, players[i]["strip"].height - 0.25)
+            players[i]["text"].setPos(0, players[i]["strip"].height - (2*i-1)* 0.25)
             
             players[i]["preview"] = self.charRoot.attachNewNode(self.generator.generate())
             players[i]["preview"].setPos(previews[i],.2, 0.0)
@@ -59,7 +59,8 @@ class CharacterScreen(DirectObject.DirectObject):
         self.accept(self.confirm[1], self.select, [1])
     
     def disableInput(self):
-        self.ignoreAll()
+        for key in self.left + self.right + self.confirm:
+            self.ignore(key)
         
     def getNp(self):
         return self.charRoot
@@ -76,9 +77,13 @@ class CharacterScreen(DirectObject.DirectObject):
         
     def rotateLeft(self, num):
         self.players[num]["strip"].rotateLeft()
+        self.updateText()
+        self.updateImg()
         
     def rotateRight(self, num):
         self.players[num]["strip"].rotateRight()
+        self.updateText()
+        self.updateImg()
         
     def select(self, num):
         self.players[num]["select"].show()
@@ -93,14 +98,8 @@ class CharacterScreen(DirectObject.DirectObject):
 
     
     def hide(self):
-        for i in range(2):
-            self.players[i]["text"].hide()
-            self.players[i]["preview"].hide()
-            self.players[i]["strip"].hide()
-            
-        self.vs.hide()
-        for key in self.left+self.right+self.confirm:
-            self.ignore(key)
+        self.charRoot.hide()
+        self.disableInput()
     
     def show(self):
         for i in range(2):

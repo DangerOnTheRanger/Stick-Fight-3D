@@ -8,9 +8,6 @@ from direct.showbase import DirectObject
 class StageScreen(DirectObject.DirectObject):
     def __init__(self, callback = None):
         self.stageRoot = NodePath("stageSelectRoot")
-        # we are sending the preview strip reference to us so it can
-        # inform us to update text and image preview
-        
         
         self.ps = PreviewStrip("../assets/stages" ,-0.7)
         self.ps.getStripNP().reparentTo(self.stageRoot)
@@ -46,7 +43,7 @@ class StageScreen(DirectObject.DirectObject):
         self.updateText()
         self.updateImg() 
         
-        self.ignoreAll()
+        self.disableInput()
     
     def enableInput(self):
         self.accept( self.left[0], self.rotateLeft ) 
@@ -57,7 +54,8 @@ class StageScreen(DirectObject.DirectObject):
         self.accept( self.select[1], self.callback)
     
     def disableInput(self):
-        self.ignoreAll()
+        for key in self.left + self.right + self.select:
+            self.ignore(key) 
     
     def getNp(self):
         return self.stageRoot 
@@ -80,17 +78,10 @@ class StageScreen(DirectObject.DirectObject):
         self.updateImg()
     
     def hide(self):
-        self.text.hide()
-        self.preview.hide()
-        self.ps.hide()
-        for key in self.left+self.right+self.select:
-            self.ignore(key)
+        self.stageRoot.hide()
     
     def show(self):
-        self.text.show()
-        self.preview.show()
-        self.ps.show()
-        self.notify()
+        self.stageRoot.show()
         
     def getStage(self):
         # return path to stage acceptable by Match class
