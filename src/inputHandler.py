@@ -71,8 +71,17 @@ class StateTrigger(object):
         return self.eventOrder
 
 class InputHandler(DirectObject.DirectObject):
-    def __init__(self, fsm, side):
-        #TODO: add temporary mapping.. see the todo in pollEvents
+    """
+    InputHandler deals with inputs of keyboard/network , and requests the corresponding Fsm-States in the fighter class.
+    It can also be used to send state-changes to the network.
+    """
+    def __init__(self, side):
+        ##TODO: re-add the function lost due to switching from an event-based to a polling-based system. whatever you do. avoid direct inputhandler-fsm interaction.
+        #i dont care how. but keep it at the 2 interfaching functions pollStates and registerStates
+        #picking the correct next-state should happen in this class only (or the result routed via this class) (excluding the overrides from getting hit and death in figther.py)
+        #leave it to the fsm to accept or reject the newly picked state.
+                
+        #TODO: add temporary mapping.. see the todo in pollStates
         #lets start by creating a mapping a key to a number, so we get independant of keyboards, controllers, cpu and networking.
         #this code, still is keyboard dependant is it maps keys to an event number (the index of the key)
         #using ["a","b","c"] , will make key a the event 1, b event 2 and so on.
@@ -91,19 +100,19 @@ class InputHandler(DirectObject.DirectObject):
         # The keymap stores button presses as a positive number, and button releases
         # as negative, so we make sure index 0 isn't used, since 0 = -0
         keymap.insert(0, "")
-        self.fsm = fsm
         self.side = side
         self.keystatus = set()
-
         # Bind our event 
         for index, key in enumerate(keymap):
-            self.accept(key, self.setKey, [index, 1])
-            self.accept(key + "-up", self.setKey, [index, 0])
+            self.accept(key, self._setKey, [index, 1])
+            self.accept(key + "-up", self._setKey, [index, 0])
             self.keystatus.add(-index)
         self.eventRecorder = EventRecorder() #will store the keys pressed in the past
         self.stateTimer = Sequence() #this will contain a sequence with a Wait and Func interval, requesting the next state
                                #unless overwritten by a more recent state (as in double-tab combo)
-        self.nextState = None  #the state into wich the the stateTimer will change so we can avoid lockups when requesting the same state over and over again
+        self.lastState = None  #the state into wich the the stateTimer will change so we can avoid lockups when requesting the same state over and over again
+        self.lastKey = 0
+        self.stateQueue = [] #contains a list of states to transition to (the queue gets cleared when calling pollEvents
         self.permaTriggers = [] #contains the "permanent" mapped inputs, cant be deleted by the fsm.
 
         self.permaTriggers.append(StateTrigger(1, "Jump", [-2])) #-2 means no jumping when the user presses down.
@@ -121,7 +130,7 @@ class InputHandler(DirectObject.DirectObject):
         self.permaTriggers.append(StateTrigger(1, ["EvadeCW","EvadeCCW"], [0], eventOrder=[1,1])) #there was some.. really odd bug that added event 1, to the event map of
         self.permaTriggers.append(StateTrigger(2, ["EvadeCCW","EvadeCW"], [0], eventOrder=[2,2])) #this line here.when i did not specify the [0]. so i added 0
 
-    def setKey(self, eventnum, setOrClear):
+    def _setKey(self, eventnum, setOrClear):
        
         if setOrClear:
             self.keystatus.add(eventnum)
@@ -132,12 +141,11 @@ class InputHandler(DirectObject.DirectObject):
             self.keystatus.discard(eventnum)
             if self.stateTimer.isPlaying():
                 self.stateTimer.insert(-2,Wait(0.05)) #if a key lifts while a new state is requested, delay it to see if a double-tap or other combo follows
-           
-
+ 
         for trigger in self.permaTriggers:
-            trigger.calcEventDist(eventnum) #update the key-distance-weighting for sorting it corretcy in the pollEvents thing.
-
-        self.pollEvents(eventnum)
+            trigger.calcEventDist(eventnum) #update the key-distance-weighting for sorting it corretcy in the pollStates thing.
+        self.lastKey = eventnum
+        #self.pollStates(eventnum)
 
     def setSide(self,side):
         self.side = side
@@ -151,18 +159,13 @@ class InputHandler(DirectObject.DirectObject):
     def _triggerKeyMatchesEventNum(self, eventnr, trigger):
         return trigger.trigger and trigger.trigger == eventnr or trigger.trigger == 0
 
-    def requestState(self,state=["Idle","Idle"]):
-        state = state[self.side]
-        if "enter" + state in dir(self.fsm):
-            if self.fsm.state:
-                self.fsm.request(state)
-                #print "requested",state
-        else:
-            print "requested state not in FSM", state 
-        self.nextState = None
-        self.stateTimer.pause()
-        
-    def pollEvents(self, eventnr = 0):
+    def registerState(self,state,forced=True):
+        #dummy function for sending events out over the network
+        pass
+
+    def pollStates(self):
+        eventnr = self.lastKey 
+        #self.lastKey = 0
         #olympic sorting! it sorts the eventTriggers by eventCount,eventOrderCount and eventDist in descending order
         #event count comes first as it defines the number of buttons to be pressed, more complex need to be catched first
         #eventOrderCount is the length of the combo which order must be correctly pressed to work out
@@ -171,6 +174,7 @@ class InputHandler(DirectObject.DirectObject):
         #the eventDist causes to trigger the event of the last pressed button, in all other parameters are equal
         #like left-right-left-right running with one button permanently pressed
         #TODO:merge the permaTriggers with temporary triggers, sort the result and continue with that.
+        nextState=None
         for trigger in self._getPermaTriggers():
             #print trigger.state, trigger.getOrder(), trigger.eventMap, self.keystatus
             #if all buttons match the current button-states
@@ -178,14 +182,15 @@ class InputHandler(DirectObject.DirectObject):
                 #if the triggerkey matches, or if there is none assigned
                 if self._triggerKeyMatchesEventNum(eventnr, trigger) and self.eventRecorder.testEvents(trigger.getOrder()):
                     #the trigger logic may get deeper with the order of events,
-                    if self.nextState != trigger.state:
-                        self.nextState = trigger.state
-                        self.stateTimer.pause()
-                        self.stateTimer = Sequence(Wait(0.04),Func(self.requestState,trigger.state))
-                        self.stateTimer.start()
-                        return
-                    else:
-                        return
-        self.stateTimer.pause()
-        self.stateTimer = Sequence(Wait(0.04),Func(self.requestState))
-        self.stateTimer.start()
+                    if self.lastState != trigger.state:
+                        nextState=trigger.state[self.side]
+                        break
+        if nextState:
+            self.stateQueue.append(nextState)
+        if nextState == None:
+            self.stateQueue.append("Idle")
+        output = self.stateQueue[:] #copy the list to be sure
+        self.stateQueue = []
+
+        return output
+

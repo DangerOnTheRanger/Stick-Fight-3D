@@ -4,6 +4,7 @@ from panda3d.core import BitMask32
 from hud import Timer, AnimatedText
 from fighter import Fighter
 from matchcamera import MatchCamera
+from inputHandler import InputHandler
 
 class Match():
     def __init__(self, Character1, Character2, arena, roundTime=90, name1="Player1", name2="Player2"):
@@ -18,8 +19,11 @@ class Match():
         self.arena.find("**/out").setCollideMask(BitMask32.bit(1))
         self.arena.find("**/out").hide()
         
-        self.player1 = Fighter(Character1, self.roundEnd, 0,  name=name1 )
-        self.player2 = Fighter(Character2, self.roundEnd, 1, name=name2 )
+        self.inputHandler1 = InputHandler(0)
+        self.player1 = Fighter(Character1, self.roundEnd, 0, self.inputHandler1, name=name1 )
+        
+        self.inputHandler2 = InputHandler(1)
+        self.player2 = Fighter(Character2, self.roundEnd, 1, self.inputHandler2, name=name2 )
         
         self.player1.setOpponent(self.player2)
         self.player2.setOpponent(self.player1)

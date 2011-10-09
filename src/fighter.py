@@ -1,16 +1,16 @@
 from panda3d.core import BitMask32 ,  CollisionTraverser ,CollisionNode, CollisionRay , CollisionHandlerQueue , Vec3
 from hud import PlayerHud
 from fighterFsm import FighterFsm
-from inputHandler import InputHandler
+
 
 class Fighter():
-    def __init__(self,characterPath , callOnDeath , side , name = None):
+    def __init__(self,characterPath , callOnDeath , side ,inputHandler ,name = None):
         #side indicates if the player is on the left or right side.
         #TODO: add collision tests against ring-out geometry in the arena, 
         
 
         self.fsm = FighterFsm(self,characterPath)    
-        self.inputHandler = InputHandler(self.fsm,side)
+        self.inputHandler = inputHandler
         
         self.side = side
         
@@ -42,17 +42,22 @@ class Fighter():
         self.prepareFighter()
    
    
-    def updateState(self,newState = None):
+    def updateState(self,newState = None , forced = False):
         if newState:
-            if "enter" + state in dir(self.fsm):
-                self.fsm.forceTransition(newState)
+            if "enter" + newState in dir(self.fsm):
+                if forced:
+                    self.fsm.forceTransition(newState)
+                    self.inputHandler.registerState(newState,forced=True)
+                elif newState != self.fsm.state:         
+                    self.fsm.request(newState)
+                    self.inputHandler.registerState(newState,forced=False)
         else:
-            self.inputHandler.pollEvents()          
-        
+            print 'now useless non-state updateState called'
+    
     def prepareFighter(self):
         taskMgr.remove("player"+str(self.side))
         self.speed = (0,0)
-        self.fsm.forceTransition("Idle")
+        self.updateState("Idle",True)
         self.health= 100
         self.healthBar.setHealth(self.health)
         self.healthBar.setRoundIndicator('V'*self.wins)
@@ -132,15 +137,15 @@ class Fighter():
             self.healthBar.setHealth(self.health)
             if self.health <= 0 : #if KO
                 taskMgr.remove("player"+str(self.side))
-                self.fsm.forceTransition("Ko")
+                self.updateState("Ko",True)
                 #actually make the match.py allow the other player to KO (in case of doubleKO,befor calling round end.
                 taskMgr.doMethodLater(0.5,self.callOnDeath,"RoundEnd") 
                 return 3
             #TODO: requesting the same state as you are in doesnt work well.sorta need to re-enter the hit state
             if "Crouch" in self.fsm.state:
-                self.fsm.forceTransition("CrouchHit")
+                self.updateState("CrouchHit",True)
             elif self.fsm.state:
-                self.fsm.forceTransition("Hit")
+                self.updateState("Hit",True)
             return 2 #regular hit
     
     def setSpeed(self,x,y):
@@ -150,6 +155,10 @@ class Fighter():
         self.faceOpp = facing #true if yuo look at the other player (usualy true unless attacking), so you can dodge an attack by evading.
     
     def _playertask(self,task):
+        
+        for i in self.inputHandler.pollStates():
+            self.updateState(i)
+            
         
         oldpos = self.fighterNP.getPos()
         
