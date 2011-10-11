@@ -3,6 +3,7 @@ from operator import attrgetter ,itemgetter
 from configFile import readKeys
 from direct.interval.MetaInterval import Sequence
 from direct.interval.FunctionInterval import Func,Wait
+from fighterState import FighterState
 
 class EventRecorder():
     def __init__(self):
@@ -191,6 +192,11 @@ class InputHandler(DirectObject.DirectObject):
             self.stateQueue.append("Idle")
         output = self.stateQueue[:] #copy the list to be sure
         self.stateQueue = []
-
-        return output
+        
+        returnval = []
+        for i in output:
+            state = FighterState()
+            state.fsmState = i
+            returnval.append(state)
+        return returnval
 

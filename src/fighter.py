@@ -1,21 +1,22 @@
 from panda3d.core import BitMask32 ,  CollisionTraverser ,CollisionNode, CollisionRay , CollisionHandlerQueue , Vec3
 from hud import PlayerHud
 from fighterFsm import FighterFsm
+from fighterState import FighterState
 
-
-class Fighter():
+class Fighter(FighterState):
     def __init__(self,characterPath , callOnDeath , side ,inputHandler ,name = None):
+        
         #side indicates if the player is on the left or right side.
         #TODO: add collision tests against ring-out geometry in the arena, 
-        
-
+        FighterState.__init__(self) 
+        self
+        self.side = side
+        self.wins = 0
         self.fsm = FighterFsm(self,characterPath)    
         self.inputHandler = inputHandler
+        self.updateTimer = 0
+
         
-        self.side = side
-        
-        self.wins = 0 #counting won rounds, a double-ko/draw counts as win for both.
-        self.faceOpp = True  #looking at opponent
         self.callOnDeath = callOnDeath
         
         self.statusBitMask = BitMask32()
@@ -24,7 +25,7 @@ class Fighter():
     
         if not name:
             name = "player"+str(1+bool(side))
-        
+        self.name = name
         self.healthBar = PlayerHud(side, name )
           
         self.fighterNP = render.attachNewNode(name)
@@ -35,29 +36,39 @@ class Fighter():
         fromObject.node().setIntoCollideMask(BitMask32.allOff())
         self.queue = CollisionHandlerQueue()
         self.collTrav.addCollider(fromObject, self.queue)
-        
         self.fsm.getNP().reparentTo(self.fighterNP)
         #fromObject.show() #more debug collision visuals
-        #self.collTrav.showCollisions(render) #debug visuals for collision     
+        #self.collTrav.showCollisions(render) #debug visuals for collision  
         self.prepareFighter()
-   
-   
-    def updateState(self,newState = None , forced = False):
-        if newState:
-            if "enter" + newState in dir(self.fsm):
-                if forced:
-                    self.fsm.forceTransition(newState)
-                    self.inputHandler.registerState(newState,forced=True)
-                elif newState != self.fsm.state:         
-                    self.fsm.request(newState)
-                    self.inputHandler.registerState(newState,forced=False)
-        else:
-            print 'now useless non-state updateState called'
+        
+    def updateStatus(self,newStatus , forced = False , suppressSend = False):
+        oldStatus = self.getStatus()
+        #updating local fsm
+        if "enter" + newStatus.fsmState in dir(self.fsm):
+            #all porperties like, position, speed, heading, state etc needs to be properly updated, if present in the new state.
+            if forced:
+                self.fsm.forceTransition(newStatus.fsmState)
+                self.update(newStatus)
+            elif newStatus.fsmState != self.fsm.state:         
+                self.fsm.request(newStatus.fsmState)
+                self.update(newStatus)
+            else:
+               pass      
+        self.fsmState = self.fsm.state
+        
+        #now for the networking part
+        if not suppressSend and (oldStatus.fsmState != self.fsmState or self.updateTimer > 2 or forced ):
+            print self.getStatus().fsmState , forced , self.updateTimer, oldStatus.fsmState, self.fsmState
+            self.updateTimer = 0
+            #send out the network info here
+            self.inputHandler.registerState(self.getStatus(),forced=True)
+      
     
     def prepareFighter(self):
         taskMgr.remove("player"+str(self.side))
+        
         self.speed = (0,0)
-        self.updateState("Idle",True)
+        self.fsmState = "Idle" 
         self.health= 100
         self.healthBar.setHealth(self.health)
         self.healthBar.setRoundIndicator('V'*self.wins)
@@ -67,6 +78,8 @@ class Fighter():
         else:
             self.fighterNP.setX(-5)
         self.fighterNP.setY(0)
+        
+        self.updateStatus(self,True)
         taskMgr.add(self._playertask, "player"+str(self.side))
     
     def setStatusBitMask(self,bitmask):
@@ -137,27 +150,34 @@ class Fighter():
             self.healthBar.setHealth(self.health)
             if self.health <= 0 : #if KO
                 taskMgr.remove("player"+str(self.side))
-                self.updateState("Ko",True)
+                newStatus = self.getStatus()
+                newStatus.fsmState = "Ko"
+                self.updateStatus(newStatus,True)
                 #actually make the match.py allow the other player to KO (in case of doubleKO,befor calling round end.
                 taskMgr.doMethodLater(0.5,self.callOnDeath,"RoundEnd") 
                 return 3
             #TODO: requesting the same state as you are in doesnt work well.sorta need to re-enter the hit state
             if "Crouch" in self.fsm.state:
-                self.updateState("CrouchHit",True)
+                newStatus = self.getStatus()
+                newStatus.fsmState = "CrouchHit"
+                self.updateStatus(newStatus,True)
+
             elif self.fsm.state:
-                self.updateState("Hit",True)
+                newStatus = self.getStatus()
+                newStatus.fsmState = "Hit"
+                self.updateStatus(newStatus,True)
             return 2 #regular hit
     
     def setSpeed(self,x,y):
         self.speed = (x,y)
     
     def faceOpponent(self,facing):
-        self.faceOpp = facing #true if yuo look at the other player (usualy true unless attacking), so you can dodge an attack by evading.
+        self.facing = facing #true if yuo look at the other player (usualy true unless attacking), so you can dodge an attack by evading.
     
     def _playertask(self,task):
-        
+        self.updateTimer += globalClock.getDt()
         for i in self.inputHandler.pollStates():
-            self.updateState(i)
+            self.updateStatus(i)
             
         
         oldpos = self.fighterNP.getPos()
@@ -188,7 +208,7 @@ class Fighter():
             self.fighterNP.setPos(oldpos)
             print "resetting fighter"
             
-        if self.faceOpp:
+        if self.facing:
             self.fighterNP.lookAt(self.opponent.getNP())      
                 
         return task.cont

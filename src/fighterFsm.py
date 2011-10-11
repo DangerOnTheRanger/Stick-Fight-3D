@@ -147,7 +147,7 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
         self._stand()
         self.fighter.play("hit")
         self.fighterinstance.setSpeed(-1,0)
-        self.transitionTimer= Sequence(Wait(self.fighter.getDuration()), Func(self.fighterinstance.updateState ) )
+        self.transitionTimer= Sequence(Wait(self.fighter.getDuration()) )
         self.transitionTimer.start()
     
     def filterHit(self,request,options):
@@ -165,7 +165,7 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
         self._crouch()
         self.fighter.play("crouch-hit")
         self.fighterinstance.setSpeed(-1,0)
-        self.transitionTimer= Sequence(Wait(self.fighter.getDuration()), Func(self.fighterinstance.updateState ) )
+        self.transitionTimer= Sequence(Wait(self.fighter.getDuration()) )
         self.transitionTimer.start()
     
     def filterCrouchHit(self,request,options):
@@ -237,7 +237,7 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
         self.fighter.stop()
         self.fighter.play('evade-ccw')
         self.fighterinstance.setSpeed(self.cfgData["evade-ccw"]["speedx"],self.cfgData["evade-ccw"]["speedy"])
-        self.transitionTimer= Sequence(Wait(self.fighter.getDuration()), Func(self.fighterinstance.updateState ) )
+        self.transitionTimer= Sequence(Wait(self.fighter.getDuration()) )
         self.transitionTimer.start()
 
     def filterEvadeCCW(self,request,args):
@@ -263,7 +263,7 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
         newBitMask.setRange(2,3)
         self._setSBM(newBitMask)
         
-        self.transitionTimer= Sequence(Wait(self.fighter.getDuration()), Func(self.fighterinstance.updateState ) )
+        self.transitionTimer= Sequence(Wait(self.fighter.getDuration()) )
         self.transitionTimer.start()
 
     def filterJumpIn(self,request,args):
@@ -289,7 +289,7 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
         newBitMask.setRange(2,3)
         self._setSBM(newBitMask)
         
-        self.transitionTimer= Sequence(Wait(self.fighter.getDuration()), Func(self.fighterinstance.updateState ) )
+        self.transitionTimer= Sequence(Wait(self.fighter.getDuration()) )
         self.transitionTimer.start()
 
     def filterJumpOut(self,request,args):
@@ -314,7 +314,7 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
         #newBitMask.setBit(3)
         self._setSBM(newBitMask)
         
-        self.transitionTimer= Sequence(Wait(self.fighter.getDuration()), Func(self.fighterinstance.updateState ) )
+        self.transitionTimer= Sequence(Wait(self.fighter.getDuration()) )
         self.transitionTimer.start()
 
     def filterJump(self,request,args):
@@ -335,8 +335,7 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
         #self.fighterinstance.setSpeed(0,0)
         self._stand()
         self.fighter.loop("idle")
-        Func(self.fighterinstance.updateState).start() #slightly hacky but we cant call that WITHIN the transition of entering idle. so it will be called next frame.
-        #doesnt look logic but saves craploads of uncool code, trust me
+        
     
     def filterIdle(self,request,options):
         if request != "Idle":
@@ -354,8 +353,7 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
         self._crouch()
         #self.fighterinstance.setSpeed(0,0)
         self.fighter.loop("crouch")
-        #Func(self.fighterinstance.updateState).start() #slightly hacky but we cant call that WITHIN the transition of entering idle. so it will be called next frame.
-        #doesnt look logic but saves craploads of uncool code, trust me
+
     
     def filterCrouch(self,request,options):
         if request != "Crouch":
@@ -372,7 +370,7 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
         self.fighterinstance.faceOpponent(False)
         self.fighter.stop()
         self.fighter.play('crouch-punch')
-        self.transitionTimer= Sequence(Wait(self.fighter.getDuration()), Func(self.fighterinstance.updateState ) )
+        self.transitionTimer= Sequence(Wait(self.fighter.getDuration()) )
         self.transitionTimer.start() 
         
         
@@ -396,7 +394,7 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
         self.fighterinstance.faceOpponent(False)
         self.fighter.stop()
         self.fighter.play('crouch-kick')
-        self.transitionTimer= Sequence(Wait(self.fighter.getDuration()), Func(self.fighterinstance.updateState ) )
+        self.transitionTimer= Sequence(Wait(self.fighter.getDuration()) )
         self.transitionTimer.start() 
         
         data = self.cfgData["crouch-kick"]
@@ -442,7 +440,7 @@ class FighterFsm(FSM):  #inherits from direct.fsm.FSM
         self.fighterinstance.faceOpponent(False)
         self.fighter.stop()
         self.fighter.play('punch')
-        self.transitionTimer= Sequence(Wait(self.fighter.getDuration()), Func(self.fighterinstance.updateState ) )
+        self.transitionTimer= Sequence(Wait(self.fighter.getDuration()) )
         self.transitionTimer.start() 
         
         data = self.cfgData["punch"]
